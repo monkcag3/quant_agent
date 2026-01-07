@@ -7,6 +7,7 @@ from qa.core.strategy import Strategy
 
 class MAStrategy(Strategy):
     symbol = '600000'
+    
     def __init__(self):
         super().__init__()
         self._kline_5 = np.zeros(5)
