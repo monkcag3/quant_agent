@@ -1,7 +1,8 @@
 
 import numpy as np
 from talib.abstract import MACD
-from quant.Strategy import Strategy
+# from quant.Strategy import Strategy
+from qa.core.strategy import Strategy
 
 
 class MAStrategy(Strategy):

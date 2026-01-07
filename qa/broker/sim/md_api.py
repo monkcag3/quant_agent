@@ -1,22 +1,23 @@
 
-import zmq
 import asyncio
-from quant.MdWorker import MdWorker
-from quant import Tick
+import zmq
+from zmq.asyncio import Context, Poller
+from qa.broker.md_api import MdApi
+from qa.core.proto import Tick
 
 
-
-class ZMdWorker(MdWorker):
-    def __init__(self, ctx=None):
-        self._ctx = ctx
+class SimMdApi(MdApi):
+    TYPE = 'md'
+    NAME = 'sim'
+    
+    def __init__(self):
+        self._ctx = Context.instance()
         self._sock = self._ctx.socket(zmq.ROUTER)
         self._futures = []
 
-    async def start(self):
+    async def run(self):
         print("md start")
-        # sock = self._ctx.socket(zmq.ROUTER)
-        # sock.setsockopt_string(zmq.IDENTITY, "fin.ai")
-        self._sock.bind("inproc://zhuyu.ai")
+        self._sock.bind(f"inproc://zhuyu.ai/{self.TYPE}.{self.NAME}")
 
         poller = zmq.asyncio.Poller()
         poller.register(self._sock, zmq.POLLIN)
@@ -34,11 +35,8 @@ class ZMdWorker(MdWorker):
 
     async def __history_tick_sender__(self, id, msg):
         import pandas as pd
-        print(id, msg)
         symbol = msg.decode('utf-8')
-        print(symbol)
         df = pd.read_csv(symbol+'.csv')
-        print(df)
 
         poller = zmq.asyncio.Poller()                                               
         poller.register(self._sock, zmq.POLLOUT)
