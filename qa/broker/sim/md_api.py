@@ -19,10 +19,10 @@ class SimMdApi(MdApi):
         print("md start")
         self._sock.bind(f"inproc://zhuyu.ai/{self.TYPE}.{self.NAME}")
 
-        poller = zmq.asyncio.Poller()
+        poller = Poller()
         poller.register(self._sock, zmq.POLLIN)
         while True:
-            events = await poller.poll()
+            events = await poller.poll(timeout=100)
             if self._sock in dict(events):
                 [id, topic, msg] = await self._sock.recv_multipart()
                 if topic == b'sub':
@@ -38,7 +38,7 @@ class SimMdApi(MdApi):
         symbol = msg.decode('utf-8')
         df = pd.read_csv(symbol+'.csv')
 
-        poller = zmq.asyncio.Poller()                                               
+        poller = Poller()                                               
         poller.register(self._sock, zmq.POLLOUT)
         tick = Tick()
         for item in df.itertuples():
@@ -51,7 +51,7 @@ class SimMdApi(MdApi):
             tick.volume = item.volume
             tick.amount = item.amount
             while True:
-                evs = await poller.poll()
+                evs = await poller.poll(timeout=100)
                 if self._sock in dict(evs):
                     await self._sock.send_multipart([id, b'tick', bytes(tick)])
                     break

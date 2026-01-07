@@ -73,7 +73,7 @@ class EventEngine:
         self.register('stop', self.__stop__)
         await self.put(Event('stop'))
 
-    def __stop__(self):
+    def __stop__(self, data):
         self._active = False
 
     async def put(

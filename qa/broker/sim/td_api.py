@@ -23,7 +23,7 @@ class SimTdApi(TdApi):
         poller = Poller()
         poller.register(self._sock, zmq.POLLIN)
         while True:
-            events = await poller.poll()
+            events = await poller.poll(timeout=100)
             if self._sock in dict(events):
                 [id, topic, msg] = await self._sock.recv_multipart()
                 if topic == b'account':
