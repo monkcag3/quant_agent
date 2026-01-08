@@ -1,6 +1,7 @@
 
 from qa.core.account import QAccount
 from qa.core.broker import TdAdaptor, MdAdaptor
+from qa.core.proto import Order
 
 
 class Strategy:
@@ -35,7 +36,19 @@ class Strategy:
         self._md_adaptor.subscribe(symbol)
 
     def buy(self, symbol, price, volume):
-        pass
+        order = Order()
+        order.symbol = symbol.encode('utf-8')
+        order.price = price
+        order.volume = volume
+        order.type = b'limit'
+        order.direction = b'buy'
+        self._md_adaptor.send_order(order)
 
     def sell(self, symbol, price, volume):
-        pass
+        order = Order()
+        order.symbol = symbol.encode('utf-8')
+        order.price = price
+        order.volume = volume
+        order.type = b'limit'
+        order.direction = b'sell'
+        self._md_adaptor.send_order(order)
