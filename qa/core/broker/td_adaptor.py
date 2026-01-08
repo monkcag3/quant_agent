@@ -43,3 +43,10 @@ class TdAdaptor:
 
     def __stop__(self, data):
         self._stop_event.set()
+
+    async def __send_order__(self, order):
+        await self._td_sock.send_multipart([b'order', bytes(order)])
+
+    def send_order(self, order):
+        loop = asyncio.get_running_loop()
+        loop.create_task(self.__send_order__(order))
