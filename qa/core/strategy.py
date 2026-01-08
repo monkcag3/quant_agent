@@ -36,19 +36,16 @@ class Strategy:
         self._md_adaptor.subscribe(symbol)
 
     def buy(self, symbol, price, volume):
-        order = Order()
-        order.symbol = symbol.encode('utf-8')
-        order.price = price
-        order.volume = volume
-        order.type = b'limit'
-        order.direction = b'buy'
-        self._md_adaptor.send_order(order)
+        self.__send_order__(symbol, price, volume, b'limit', b'direction')
 
     def sell(self, symbol, price, volume):
+        self.__send_order__(symbol, price, volume, b'limit', b'direction')
+
+    def __send_order__(self, symbol, price, volume, type, direction):
         order = Order()
         order.symbol = symbol.encode('utf-8')
         order.price = price
         order.volume = volume
-        order.type = b'limit'
-        order.direction = b'sell'
+        order.type = type
+        order.direction = direction
         self._md_adaptor.send_order(order)
