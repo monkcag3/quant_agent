@@ -1,5 +1,6 @@
 
 from qa.core.account import QAccount
+from qa.core.broker import TdAdaptor, MdAdaptor
 
 
 class Strategy:
@@ -15,7 +16,11 @@ class Strategy:
     def on_tick(self, tick):
         pass
 
-    def register_broker(self, md_adaptor, td_adaptor):
+    def register_broker(
+        self,
+        md_adaptor: MdAdaptor,
+        td_adaptor: TdAdaptor
+    ):
         self._md_adaptor = md_adaptor
         self._td_adaptor = td_adaptor
 
@@ -28,3 +33,9 @@ class Strategy:
 
     def subscribe(self, symbol):
         self._md_adaptor.subscribe(symbol)
+
+    def buy(self, symbol, price, volume):
+        pass
+
+    def sell(self, symbol, price, volume):
+        pass
