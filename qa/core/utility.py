@@ -9,7 +9,7 @@ import talib
 import numpy as np
 from datetime import datetime
 from typing import Literal, overload, Callable
-from qa.core.proto import Bar, Tick
+from qa.core.meta import Bar, Tick
 
 
 class ArrayManager:

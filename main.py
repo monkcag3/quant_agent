@@ -13,6 +13,3 @@ if __name__ == "__main__":
     fin = QAZone()
     fin.add_strategy(strategy)
     fin.run()
-
-
-

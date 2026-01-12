@@ -1,9 +1,13 @@
 
 import asyncio
+import flatbuffers
 import zmq
 from zmq.asyncio import Context, Poller
 from qa.broker.td_api import TdApi
-from qa.core.proto import Account
+# from qa.core.proto import Account
+from qa.proto.fbs import Account as FBAccountENC
+from qa.proto.fbs import Trade as FBTradeENC
+from qa.proto.fbs.Order import Order as FBOrder
 
 
 class SimTdApi(TdApi):
@@ -40,10 +44,14 @@ class SimTdApi(TdApi):
         '''
         回测账户信息
         '''
-        account = Account()
-        account.available = self._init_cash
-        account.withdraw_quote = self._init_cash
-        await self._sock.send_multipart([id, b'account', bytes(account)])
+        builder = flatbuffers.Builder(0)
+        FBAccountENC.Start(builder)
+        FBAccountENC.AddBalance(builder, self._init_cash)
+        FBAccountENC.AddFrozen(builder, 0.0)
+        acc = FBAccountENC.End(builder)
+        builder.Finish(acc)
+        buff = builder.Output()
+        await self._sock.send_multipart([id, b'account', buff])
 
     async def snd_position(self, id, msg):
         '''
@@ -55,5 +63,24 @@ class SimTdApi(TdApi):
         '''
         回测时order总是成功，并且返回trade
         '''
+        order = FBOrder.GetRootAsOrder(msg)
+        builder = flatbuffers.Builder(0)
+        symbol = builder.CreateString(order.Symbol())
+        exchange = builder.CreateString(order.Exchange())
+        orderid = builder.CreateString(order.Orderid())
+        direction = builder.CreateString(order.Direction())
+        offset = builder.CreateString(order.Offset())
+        FBTradeENC.Start(builder)
+        FBTradeENC.AddSymbol(builder, symbol)
+        FBTradeENC.AddExchange(builder, exchange)
+        FBTradeENC.AddOrderid(builder, orderid)
+        FBTradeENC.AddDirection(builder, direction)
+        FBTradeENC.AddOffset(builder, offset)
+        FBTradeENC.AddPrice(builder, order.Price())
+        FBTradeENC.AddVolume(builder, order.Volume())
+        FBTradeENC.AddTimestamp(builder, order.Timestamp())
+        trd = FBTradeENC.TradeEnd(builder)
+        builder.Finish(trd)
+        buff = builder.Output()
         await self._sock.send_multipart([id, b'order', msg])
-        await self._sock.send_multipart([id, b'trade', msg])
+        await self._sock.send_multipart([id, b'trade', buff])

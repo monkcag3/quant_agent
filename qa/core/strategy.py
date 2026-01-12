@@ -1,7 +1,7 @@
 
 from qa.core.account import QAccount
 from qa.core.broker import TdAdaptor, MdAdaptor
-from qa.core.proto import Order
+from qa.core.meta import Order
 
 
 class Strategy:
@@ -36,16 +36,21 @@ class Strategy:
         self._md_adaptor.subscribe(symbol)
 
     def buy(self, symbol, price, volume):
-        self.__send_order__(symbol, price, volume, b'limit', b'direction')
+        self.__send_order__(symbol, price, volume, b'limit', b'buy')
 
     def sell(self, symbol, price, volume):
-        self.__send_order__(symbol, price, volume, b'limit', b'direction')
+        self.__send_order__(symbol, price, volume, b'limit', b'sell')
 
     def __send_order__(self, symbol, price, volume, type, direction):
-        order = Order()
-        order.symbol = symbol.encode('utf-8')
-        order.price = price
-        order.volume = volume
-        order.type = type
-        order.direction = direction
-        self._md_adaptor.send_order(order)
+        try:
+            order = Order()
+            order.symbol = symbol.encode('utf-8')
+            order.price = price
+            order.volume = volume
+            order.type = type
+            order.direction = direction
+            # 先本地账户处理，在发送订单
+            self.acc.on_req_order(order)
+            self._td_adaptor.send_order(order)
+        except Exception as e:
+            print(e)

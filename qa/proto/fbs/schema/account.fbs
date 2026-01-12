@@ -1,0 +1,11 @@
+
+
+namespace proto;
+
+table Account {
+    accountid : string;
+    balance   : float;
+    frozen    : float;
+}
+
+root_type Account;

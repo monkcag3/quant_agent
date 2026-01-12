@@ -1,0 +1,16 @@
+
+namespace proto;
+
+table Position {
+    symbol       : string(required);
+    exchange     : string(required);
+    direction    : string;
+    volume       : float;
+    price        : float;
+    frozen       : float;
+    pnl          : float = 0;
+    today_volume : float;
+    today_price  : float;
+}
+
+root_type Position;

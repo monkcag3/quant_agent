@@ -1,0 +1,19 @@
+
+namespace proto;
+
+table Bar {
+    symbol     : string(required);
+    exchange   : string(required);
+    timestamp  : long;
+
+    last_price : float;
+    volume     : int;
+    amount     : float;
+
+    open_price : float;
+    high_price : float;
+    low_price  : float;
+    close_price: float;
+}
+
+root_type Bar;

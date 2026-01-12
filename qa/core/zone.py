@@ -16,6 +16,7 @@ class QAZone:
     def add_strategy(self, strategy: Strategy):
         self._strategy = strategy
         self._strategy.register_broker(self._md_adaptor, self._td_adaptor)
+        self._strategy.register_event_engine(self._event_engine)
 
     def run(self):
         asyncio.run(self.__main__())
@@ -23,6 +24,7 @@ class QAZone:
     async def __main__(self):
 
         # self._event_engine.register('tick', self._strategy.on_tick)
+        self._strategy.on_init()
         # self._event_engine.register('account', self._account.on_rtn_account)
         # self._event_engine.register('position', self._account.on_rtn_position)
         # self._event_engine.register('trade', self._account.on_rtn_trade)

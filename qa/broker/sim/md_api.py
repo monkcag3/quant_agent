@@ -1,9 +1,10 @@
 
 import asyncio
+import flatbuffers
 import zmq
 from zmq.asyncio import Context, Poller
 from qa.broker.md_api import MdApi
-from qa.core.proto import Tick
+from qa.proto.fbs import Tick
 
 
 class SimMdApi(MdApi):
@@ -35,24 +36,29 @@ class SimMdApi(MdApi):
 
     async def __history_tick_sender__(self, id, msg):
         import pandas as pd
-        symbol = msg.decode('utf-8')
-        df = pd.read_csv(symbol+'.csv')
+        vt_symbol = msg.decode('utf-8')
+        df = pd.read_csv(vt_symbol+'.csv')
 
         poller = Poller()                                               
         poller.register(self._sock, zmq.POLLOUT)
-        tick = Tick()
+        # tick = Tick()
+        
         for item in df.itertuples():
-            tick.datetime = item.time
-            tick.symbol = item.code.encode('utf-8')
-            tick.open = item.open
-            tick.high = item.high
-            tick.low = item.low
-            tick.close = item.close
-            tick.volume = item.volume
-            tick.amount = item.amount
+            builder = flatbuffers.Builder(0)
+            symbol = builder.CreateString(vt_symbol)
+            Tick.TickStart(builder)
+            Tick.AddSymbol(builder, symbol)
+            Tick.AddTimestamp(builder, item.time)
+            Tick.AddOpenPrice(builder, item.open)
+            Tick.AddHighPrice(builder, item.high)
+            Tick.AddLowPrice(builder, item.low)
+            Tick.AddClosePrice(builder, item.close)
+            tick = Tick.TickEnd(builder)
+            builder.Finish(tick)
+            buff = builder.Output()
             while True:
                 evs = await poller.poll(timeout=100)
                 if self._sock in dict(evs):
-                    await self._sock.send_multipart([id, b'tick', bytes(tick)])
+                    await self._sock.send_multipart([id, b'tick', buff])
                     break
         await self._sock.send_multipart([id, b'finished', b''])
