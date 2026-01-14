@@ -1,5 +1,7 @@
 
 from dataclasses import dataclass, field
+from typing import Any, Awaitable, Callable
+from qa.core import event, pair
 
 
 @dataclass
@@ -103,3 +105,17 @@ class Tick:
     def ask_price5(self) -> float: return self.ask_price[4]
     @ask_price5.setter
     def ask_price5(self, v: float): self.ask_price[4] = v
+
+    @property
+    def pair(self) -> pair.Pair: return pair.Pair(self.symbol, self.exchange)
+
+
+class TickEvent(event.Event):
+    def __init__(
+        self,
+        tick: Tick,
+    ):
+        super().__init__(tick.datetime)
+        self.tick = tick
+
+TickEventHandler = Callable[[TickEvent], Awaitable[Any]]

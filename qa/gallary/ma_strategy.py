@@ -32,3 +32,11 @@ class MAStrategy(Strategy):
                 self.sell(self.symbol, self.am.close[-1], self.pos)
                 print(bar.datetime, " sell", self.am.close[-1])
                 self.pos = 0
+
+
+# class MAStrategy:
+#     symbol = '600000'
+#     pos = 0
+
+#     def on_tick(self, tick):
+#         pass

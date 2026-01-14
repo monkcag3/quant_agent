@@ -1,5 +1,15 @@
 
-from qa.core.meta import Order, Trade, Tick
+from collections import defaultdict
+import asyncio
+import logging
+from typing import Any
+from decimal import Decimal
+
+import qa
+from qa.core.meta import Order, Trade, Tick, TickEvent
+
+
+logger = logging.getLogger(__name__)
 
 
 class PortfolioMetrics:
@@ -44,6 +54,8 @@ class QAccount:
         self._withdraw_quota: int = self._available
         self._frozen_cash: int = 0
         self._portfolio_metrics = PortfolioMetrics(self)
+
+        self._quotes = defaultdict(list)
 
     @property
     def available(self):
@@ -97,3 +109,47 @@ class QAccount:
             self._available += amount
             # todo: position op
         self._portfolio_metrics.on_trade(trd)
+
+    def on_tick(
+        self,
+        event: TickEvent,
+    ):
+        self._quotes[event.tick.pair] = event.tick
+
+    async def on_trading_singal(
+        self,
+        trading_signal: qa.TradingSignal,
+    ):
+        print(f'-------- {trading_signal.direction} {trading_signal.pair}')
+        pairs = list(trading_signal.get_pairs())
+
+        try:
+            coros = []
+            for pair, target_position in pairs:
+                coros.append(self.switch_position(pair, target_position))
+            await asyncio.gather(*coros)
+        except Exception as e:
+            logger.exception(e)
+
+    async def switch_position(
+        self,
+        pair: qa.Pair,
+        target_position: qa.Direction,
+        force: bool = False,
+    ):
+        quote: Tick = self._quotes.get(pair)
+        if quote is None:
+            return
+
+        if target_position == qa.Direction.LONG:
+            # 计算当前可购买手数
+            volume = Decimal(self.available) / quote.close
+            volume = (volume // 100) * 100
+            if volume == 0:
+                return
+            # 买
+            pass
+        elif target_position == qa.Direction.SHORT:
+            # 获取当前持仓
+            # 卖
+            pass

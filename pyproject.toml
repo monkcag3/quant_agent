@@ -1,14 +1,16 @@
 [project]
-name = "fin-agent"
+name = "quant-agent"
 version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
+    "aiohttp>=3.13.3",
     "baostock>=0.8.9",
     "blinker>=1.9.0",
     "flatbuffers>=25.12.19",
     "numpy>=2.3.5",
     "pyzmq>=27.1.0",
     "ta-lib>=0.6.8",
+    "talipp>=2.7.0",
 ]

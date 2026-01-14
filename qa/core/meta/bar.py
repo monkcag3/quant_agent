@@ -1,5 +1,7 @@
 
+from typing import Any, Awaitable, Callable
 from dataclasses import dataclass
+from qa.core import event
 
 
 @dataclass
@@ -42,3 +44,14 @@ class Bar:
 
     def __post_init__(self) -> None:
         self.vt_symbol: str = f"{self.symbol}.{self.exchange}"
+
+
+class BarEvent(event.Event):
+    def __init__(
+        self,
+        bar: Bar,
+    ):
+        super().__init__(bar.datetime)
+        self.bar = bar
+
+BarEventHandler = Callable[[BarEvent], Awaitable[Any]]
