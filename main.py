@@ -1,7 +1,6 @@
 
 import asyncio
 from qa.core.zone import QAZone
-from qa.gallary.ma_strategy import MAStrategy
 import qa
 import qa.external.sim.exchange as sim_exchange
 from qa.external.sim import csv
@@ -18,10 +17,6 @@ async def main():
     pair = qa.Pair('600000', 'SSE')
     
     strategy = rsi.Strategy(zone, 7, 30, 70)
-    # exchange = sim_exchange.Exchange(zone)
-    # exchange.add_md_source(csv.TickSource(pair, '600000.u.csv'))
-    # exchange.subscribe_to_tick_event(pair, strategy.on_tick_event)
-    # exchange.subscribe_to_tick_event(pair, account.on_tick)
 
     # 行情
     md = csv.TickFactory(zone)

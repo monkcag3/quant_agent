@@ -12,9 +12,6 @@ import functools
 import heapq
 import logging
 
-from qa.core.broker import MdAdaptor, TdAdaptor
-from qa.core.account import QAccount
-from qa.core.strategy import Strategy
 from . import helpers, event
 
 
