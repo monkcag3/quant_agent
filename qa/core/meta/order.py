@@ -1,6 +1,9 @@
 
 from enum import Enum
 from dataclasses import dataclass
+from typing import Any, Awaitable, Callable
+
+from qa.core import event
 
 
 class Offset(Enum):
@@ -44,13 +47,12 @@ class Order:
     datetime  : int = 0
     reference : str = ""
 
-    # def __post_init__(self) -> None:
-    #     """"""
-    #     self.vt_symbol: str = f"{self.symbol}.{self.exchange}"
-    #     self.vt_orderid: str = f"{self.gateway_name}.{self.orderid}"
+class OrderEvent(event.Event):
+    def __init__(
+        self,
+        order: Order,
+    ):
+        super().__init__(order.datetime)
+        self.order = order
 
-    # def is_active(self) -> bool:
-    #     """
-    #     Check if the order is active.
-    #     """
-    #     return self.status in ACTIVE_STATUSES
+OrderEventHandler = Callable[[OrderEvent], Awaitable[Any]]

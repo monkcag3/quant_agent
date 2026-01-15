@@ -2,7 +2,7 @@
 from talipp.indicators import RSI
 
 import qa
-from qa.external.sim.account import QAccount
+
 
 
 class Strategy(qa.TradingSignalSource):
@@ -17,14 +17,13 @@ class Strategy(qa.TradingSignalSource):
         self._oversold_level = oversold_level
         self._overbought_level = overbought_level
         self.rsi = RSI(period=period)
-        
-        self.acc = QAccount()
 
     async def on_tick_event(
         self,
         tick: qa.TickEvent,
     ):
         self.rsi.add(float(tick.tick.close))
+        # print(tick.tick.datetime, tick.tick.symbol, tick.tick.close)
 
         if len(self.rsi) < 2 or self.rsi[-2] is None:
             return

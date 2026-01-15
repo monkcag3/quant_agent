@@ -2,11 +2,14 @@
 from collections import defaultdict
 import asyncio
 import logging
-from typing import Any
+from typing import Any, Optional
 from decimal import Decimal
+import dataclasses
+from datetime import datetime
 
 import qa
-from qa.core.meta import Order, Trade, Tick, TickEvent
+from qa.core.meta import Order, Trade, Tick, TickEvent, OrderEvent
+from qa.external.sim.td_api import TdApi
 
 
 logger = logging.getLogger(__name__)
@@ -46,28 +49,44 @@ class PortfolioMetrics:
         print("="*50)
 
 
+@dataclasses.dataclass
+class Position:
+    pair: qa.Pair
+    volume: int = 0
+    price: Decimal = 0.0
+    frozon_volume: int = 0
+    frozon_day: int = 0
+
+
 class QAccount:
     MULTIPLIERS = 100
 
-    def __init__(self, init_capital=20000.0):
-        self._available: int = int(init_capital * self.MULTIPLIERS)
-        self._withdraw_quota: int = self._available
-        self._frozen_cash: int = 0
+    def __init__(
+        self,
+        td_api: TdApi,
+        init_capital=20000.0
+    ):
+        self._available: Decimal = Decimal(init_capital)
+        self._withdraw_quota: Decimal = self._available
+        self._frozen_cash: Decimal = 0
         self._portfolio_metrics = PortfolioMetrics(self)
 
         self._quotes = defaultdict(list)
+        self._positions = defaultdict(list)
+
+        self._td_api = td_api
 
     @property
     def available(self):
-        return self._available / self.MULTIPLIERS
+        return self._available
     
     @property
     def withdraw_quota(self):
-        return self._withdraw_quota / self.MULTIPLIERS
+        return self._withdraw_quota
     
     @property
     def frozen_cash(self):
-        return self._frozen_cash / self.MULTIPLIERS
+        return self._frozen_cash
     def on_init(self):
         pass
 
@@ -79,7 +98,7 @@ class QAccount:
         print('get position')
 
     def on_req_order(self, order: Order):
-        amount = int(order.price * self.MULTIPLIERS) * order.volume
+        amount = order.price * order.volume
         if order.direction == b'buy':
             self._available -= amount
             self._frozen_cash += amount
@@ -87,7 +106,7 @@ class QAccount:
             # self._frozen_cash -= amount
             pass
     
-    def on_rtn_order(self, order: Order):
+    def on_rtn_order(self, order: OrderEvent):
         # amount = order.price * order.volume
         # if order.direction == b'buy':
         #     self._available -= amount
@@ -96,19 +115,21 @@ class QAccount:
         #     # self._frozen_cash -= amount
         #     pass
         # print('---', self.available, self.frozen_cash)
+        print('------ get order event')
         pass
     
     def on_rtn_trade(self, trd: Trade):
-        amount = int(trd.price * self.MULTIPLIERS) * trd.volume
-        if trd.direction == b'buy':
-            print(f' ----- buy {trd.symbol} {trd.price}')
-            self._frozen_cash -= amount
-            # todo: position op
-        elif trd.direction == b'sell':
-            print(f' ----- sell {trd.symbol} {trd.price}')
-            self._available += amount
-            # todo: position op
-        self._portfolio_metrics.on_trade(trd)
+        # amount = trd.price * trd.volume
+        # if trd.direction == b'buy':
+        #     print(f' ----- buy {trd.symbol} {trd.price}')
+        #     self._frozen_cash -= amount
+        #     # todo: position op
+        # elif trd.direction == b'sell':
+        #     print(f' ----- sell {trd.symbol} {trd.price}')
+        #     self._available += amount
+        #     # todo: position op
+        # self._portfolio_metrics.on_trade(trd)
+        print('----- get trade event')
 
     def on_tick(
         self,
@@ -120,7 +141,7 @@ class QAccount:
         self,
         trading_signal: qa.TradingSignal,
     ):
-        print(f'-------- {trading_signal.direction} {trading_signal.pair}')
+        # print(f'-------- {trading_signal.direction} {trading_signal.pair}')
         pairs = list(trading_signal.get_pairs())
 
         try:
@@ -147,9 +168,12 @@ class QAccount:
             volume = (volume // 100) * 100
             if volume == 0:
                 return
+            print(f'-------- long {pair} {volume} {quote.close}')
+            self._available -= Decimal(volume) * Decimal(quote.close)
             # 买
-            pass
+            await self._td_api.create_makert_order(pair, qa.OrderOperation.BUY, datetime=quote.datetime)
         elif target_position == qa.Direction.SHORT:
             # 获取当前持仓
             # 卖
+            await self._td_api.create_makert_order(pair, qa.OrderOperation.SELL, datetime=quote.datetime)
             pass

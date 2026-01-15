@@ -146,7 +146,7 @@ class Zone(metaclass=abc.ABCMeta):
 
     @abc.abstractmethod
     def now(self) -> datetime.datetime:
-        raise NotImplementedError
+        raise NotImplementedError()
     
     @property
     def stopped(self) -> bool:
@@ -219,7 +219,7 @@ class Zone(metaclass=abc.ABCMeta):
 
     @abc.abstractmethod
     async def _dispatch_loop_(self):
-        raise NotImplementedError
+        raise NotImplementedError()
     
     @contextlib.asynccontextmanager
     async def _core_task_group_(self):

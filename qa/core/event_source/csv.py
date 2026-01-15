@@ -41,7 +41,7 @@ class RowParser(metaclass=abc.ABCMeta):
         self,
         row_dict: dict,
     ) -> Sequence[event.Event]:
-        raise NotImplementedError
+        raise NotImplementedError()
     
 
 def load_sort_and_yield(

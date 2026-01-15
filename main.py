@@ -1,38 +1,40 @@
 
 import asyncio
 from qa.core.zone import QAZone
-# from qa.gallary.ma_strategy import MAStrategy
-from qa.core.pair import Pair
+from qa.gallary.ma_strategy import MAStrategy
+import qa
 import qa.external.sim.exchange as sim_exchange
 from qa.external.sim import csv
 from qa.external.sim.account import QAccount
-from qa.core.meta import tick
 from qa.gallary import rsi
-
+from qa.external.sim import csv
 
 asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 
 
-async def on_tick_event(tick_event: tick.TickEvent):
-    print('--------------', tick_event.tick)
-    pass
 
 async def main():
-    zone = QAZone()
-    pair = Pair('600000', 'SSE')
-    acc = QAccount()
-
-    exchange = sim_exchange.Exchange(zone)
-    exchange.add_md_source(csv.TickSource(pair, "600000.u.csv"))
-
+    zone = qa.QAZone()
+    pair = qa.Pair('600000', 'SSE')
+    
     strategy = rsi.Strategy(zone, 7, 30, 70)
-    exchange.subscribe_to_tick_event(pair, strategy.on_tick_event)
-    ## 订阅交易信号
-    strategy.subscribe_to_trading_signals(acc.on_trading_singal)
-    ## 订阅order/trade信号（交易所返回消息）
-    exchange.subscribe_to_tick_event(pair, acc.on_tick)
-    exchange.subscribe_to_order(acc.on_rtn_order)
-    exchange.subscribe_to_trade(acc.on_rtn_trade)
+    # exchange = sim_exchange.Exchange(zone)
+    # exchange.add_md_source(csv.TickSource(pair, '600000.u.csv'))
+    # exchange.subscribe_to_tick_event(pair, strategy.on_tick_event)
+    # exchange.subscribe_to_tick_event(pair, account.on_tick)
+
+    # 行情
+    md = csv.TickFactory(zone)
+    md.subscribe(pair, strategy.on_tick_event)
+    
+
+    # 交易
+    td = csv.TradeFactory(zone)
+    account = QAccount(td_api=td)
+    md.subscribe(pair, account.on_tick)
+    strategy.subscribe_to_trading_signals(account.on_trading_singal)
+    td.subscribe_to_order(pair, account.on_rtn_order)
+    td.subscribe_to_trade(pair, account.on_rtn_trade)
 
     await zone.run()
 

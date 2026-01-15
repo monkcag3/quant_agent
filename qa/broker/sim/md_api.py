@@ -17,7 +17,6 @@ class SimMdApi(MdApi):
         self._futures = []
 
     async def run(self):
-        print("md start")
         self._sock.bind(f"inproc://zhuyu.ai/{self.TYPE}.{self.NAME}")
 
         poller = Poller()

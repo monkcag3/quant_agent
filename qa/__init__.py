@@ -2,6 +2,7 @@
 from .core.meta.tick import (
     Tick,
     TickEvent,
+    TickEventHandler,
 )
 
 from .core.meta.bar import (
@@ -9,9 +10,15 @@ from .core.meta.bar import (
     BarEvent,
 )
 
+from .core.meta import (
+    Order, OrderEvent, OrderEventHandler,
+    Trade, TradeEvent, TradeEventHandler,
+)
+
 from .core.zone import (
     Zone,
     QAZone,
+    EventHandler
 )
 
 from .core.const import (
@@ -32,5 +39,9 @@ from .core.event_source.trading_signal import (
 )
 
 from .core.pair import (
-    Pair
+    Pair,
+)
+
+from .external.sim.td_api import (
+    TdApi,
 )
