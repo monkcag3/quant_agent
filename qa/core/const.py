@@ -4,41 +4,24 @@ import enum
 
 @enum.unique
 class OrderOperation(enum.Enum):
-    BUY  = 100
-    SELL = 101
-
-    def __str__(self):
-        return {
-            OrderOperation.BUY: "buy",
-            OrderOperation.SELL: "sell",
-        }[self]
+    BUY  = "BUY"
+    SELL = "SELL"
 
 
 @enum.unique
 class Direction(enum.Enum):
-    LONG  = 200
-    SHORT = 201
-    NET   = 202
-
-    def __str__(self):
-        return {
-            Direction.LONG: "long",
-            Direction.SHORT: "short",
-            Direction.NET: "neutral",
-        }[self]
+    LONG    = "LONG"
+    SHORT   = "SHORT"
+    NEUTRAL = "NEUTRAL"
 
 
 @enum.unique
 class OrderType(enum.Enum):
-    LIMIT  = 100
-    MARKET = 101
+    LIMIT  = "LIMIT"
+    MARKET = "MARKET"
 
-    def __str__(self):
-        return {
-            OrderType.LIMIT: "limit",
-            OrderType.MARKET: "market",
-        }[self]
 
+@enum.unique
 class Exchange(enum.Enum):
     CFFEX = "CFFEX" # China Financial Futures Exchange
     SHFE  = "SHFE"  # Shanghai Futures Exchange

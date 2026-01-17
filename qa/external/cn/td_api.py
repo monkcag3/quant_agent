@@ -9,7 +9,7 @@ import qa
 class TdApi:
 
     @abc.abstractmethod
-    async def create_makert_order(
+    async def create_market_order(
         self,
         pair: qa.Pair,
         operation: qa.OrderOperation,

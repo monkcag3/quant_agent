@@ -2,14 +2,16 @@
 from typing import Dict
 
 import qa
-from qa.external.sim import csv
+from .. import csv
+
 
 def get_tick_channel(
     pair: qa.Pair,
 ):
     return f"{str(pair)}@tick"
 
-class TickFactory:
+
+class MdFactory:
     def __init__(
         self,
         zone: qa.Zone,

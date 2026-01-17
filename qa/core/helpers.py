@@ -8,8 +8,6 @@ import logging
 import uuid
 import warnings
 
-import aiohttp
-
 
 class TaskGroup:
     def __init__(self):

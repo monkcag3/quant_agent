@@ -13,7 +13,7 @@ DEFAULT_EVENT_SOURCE_PRIORITY = 0
 class Producer:
     """Base class for producers.
 
-    A producer is the active part of an :class:`basana.EventSource` or a group of them.
+    A producer is the active part of an :class:`qa.EventSource` or a group of them.
     Take a look at :meth:`EventDispatcher.run` for details on how producers are used.
 
     .. note::

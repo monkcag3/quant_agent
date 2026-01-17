@@ -1,4 +1,5 @@
 
+import copy
 from collections import defaultdict
 import asyncio
 import logging
@@ -8,8 +9,9 @@ import dataclasses
 from datetime import datetime
 
 import qa
-from qa.core.meta import Order, Trade, Tick, TickEvent, OrderEvent
-from qa.external.sim.td_api import TdApi
+from qa.core.meta import Order, Trade, Tick, TickEvent, OrderEvent, TradeEvent
+from qa.core.const import OrderOperation
+from .td_api import TdApi
 
 
 logger = logging.getLogger(__name__)
@@ -29,16 +31,35 @@ class PortfolioMetrics:
         self.sharpe_ratio      : float = 0.0
         self.sortino_ratio     : float = 0.0
         self.win_rate          : float = 0.0
+        self._buy_slot: Optional[Trade] = None
 
     def on_tick(self, tick: Tick):
         """计算浮动收益"""
         pass
 
-    def on_trade(self, order: Trade):
+    def on_trade(
+        self,
+        trade: Trade
+    ):
         """计算实际盈亏"""
-        if order.direction == b"sell":
-            print(self.init_capital, self.acc.available)
-            print('-------------', (self.acc.available - self.init_capital) / self.init_capital)
+        price = Decimal(trade.price).quantize(Decimal("0.01"))
+        available = Decimal(self.acc.available).quantize(Decimal("0.01"))
+        if trade.direction == OrderOperation.BUY:
+            print('-'*50)
+            # self._pair[0] = Decimal(trade.price * trade.volume)
+            self._buy_slot = copy.deepcopy(trade)
+            logger.warning(f'开 - 代码[{trade.symbol}]- 成交价[{price}] - 成交量[{trade.volume}]')
+        elif trade.direction == OrderOperation.SELL:
+            # print(self.init_capital, self.acc.available)
+            # print('-------------', (self.acc.available - self.init_capital) / self.init_capital)
+            # self._pair[1] = Decimal(trade.price * trade.volume)
+            delta = Decimal(Decimal(trade.price * trade.volume) - Decimal(self._buy_slot.price * self._buy_slot.volume)).quantize(Decimal("0.01"))
+            logger.warning(f'平 - 代码[{trade.symbol}]- 成交价[{price}] - 成交量[{trade.volume}]')
+            if delta > 0:
+                print(f'单笔盈利[{delta}] 账户金额[{available}]')
+            else:
+                print(f'单笔亏损[{delta}] 账户金额[{available}]')
+            print('-'*50)
         pass
 
     def summrize(self):
@@ -75,6 +96,8 @@ class QAccount:
         self._positions = defaultdict(list)
 
         self._td_api = td_api
+        
+        self._pos = 0
 
     @property
     def available(self):
@@ -99,14 +122,14 @@ class QAccount:
 
     def on_req_order(self, order: Order):
         amount = order.price * order.volume
-        if order.direction == b'buy':
+        if order.direction == OrderOperation.BUY:
             self._available -= amount
             self._frozen_cash += amount
-        elif order.direction == b'sell':
+        elif order.direction == OrderOperation.SELL:
             # self._frozen_cash -= amount
             pass
     
-    def on_rtn_order(self, order: OrderEvent):
+    async def on_rtn_order(self, order: OrderEvent):
         # amount = order.price * order.volume
         # if order.direction == b'buy':
         #     self._available -= amount
@@ -115,21 +138,22 @@ class QAccount:
         #     # self._frozen_cash -= amount
         #     pass
         # print('---', self.available, self.frozen_cash)
-        print('------ get order event')
         pass
     
-    def on_rtn_trade(self, trd: Trade):
-        # amount = trd.price * trd.volume
-        # if trd.direction == b'buy':
-        #     print(f' ----- buy {trd.symbol} {trd.price}')
-        #     self._frozen_cash -= amount
-        #     # todo: position op
-        # elif trd.direction == b'sell':
-        #     print(f' ----- sell {trd.symbol} {trd.price}')
-        #     self._available += amount
-        #     # todo: position op
-        # self._portfolio_metrics.on_trade(trd)
-        print('----- get trade event')
+    async def on_rtn_trade(
+        self,
+        event: TradeEvent
+    ):
+        amount = event.trade.price * event.trade.volume
+        if event.trade.direction == OrderOperation.BUY:
+            self._pos += event.trade.volume
+            self._frozen_cash -= Decimal(amount)
+        elif event.trade.direction == OrderOperation.SELL:
+            self._pos -= event.trade.volume
+            self._available += Decimal(amount)
+        self._portfolio_metrics.on_trade(event.trade)
+
+        pass
 
     def on_tick(
         self,
@@ -141,7 +165,6 @@ class QAccount:
         self,
         trading_signal: qa.TradingSignal,
     ):
-        # print(f'-------- {trading_signal.direction} {trading_signal.pair}')
         pairs = list(trading_signal.get_pairs())
 
         try:
@@ -168,12 +191,24 @@ class QAccount:
             volume = (volume // 100) * 100
             if volume == 0:
                 return
-            print(f'-------- long {pair} {volume} {quote.close}')
             self._available -= Decimal(volume) * Decimal(quote.close)
             # 买
-            await self._td_api.create_makert_order(pair, qa.OrderOperation.BUY, datetime=quote.datetime)
+            await self._td_api.create_limit_order(
+                pair,
+                qa.OrderOperation.BUY,
+                datetime=quote.datetime,
+                price=quote.close,
+                volume=volume
+            )
         elif target_position == qa.Direction.SHORT:
             # 获取当前持仓
             # 卖
-            await self._td_api.create_makert_order(pair, qa.OrderOperation.SELL, datetime=quote.datetime)
+            if self._pos > 0:
+                await self._td_api.create_limit_order(
+                    pair,
+                    qa.OrderOperation.SELL,
+                    datetime=quote.datetime,
+                    price=quote.close,
+                    volume=self._pos
+                )
             pass

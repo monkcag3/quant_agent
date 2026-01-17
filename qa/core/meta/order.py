@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from typing import Any, Awaitable, Callable
 
 from qa.core import event
+from qa.core.const import OrderOperation
 
 
 class Offset(Enum):
@@ -38,7 +39,7 @@ class Order:
     orderid   : str = ""
 
     type      : OrderType = OrderType.LIMIT
-    direction : Direction | None = None
+    direction : OrderOperation = OrderOperation.BUY
     offset    : Offset = Offset.NONE
     price     : float = 0
     volume    : float = 0

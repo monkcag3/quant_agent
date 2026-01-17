@@ -42,6 +42,4 @@ from .core.pair import (
     Pair,
 )
 
-from .external.sim.td_api import (
-    TdApi,
-)
+from .core import logs

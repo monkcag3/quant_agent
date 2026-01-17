@@ -2,7 +2,7 @@
 from talipp.indicators import RSI
 
 import qa
-
+from qa.core.utility import ArrayManager, BarUpdater
 
 
 class Strategy(qa.TradingSignalSource):
@@ -18,12 +18,16 @@ class Strategy(qa.TradingSignalSource):
         self._overbought_level = overbought_level
         self.rsi = RSI(period=period)
 
+        self.am = ArrayManager()
+        self.bu = BarUpdater(self.am, '15m', self.on_15min_bar)
+
     async def on_tick_event(
         self,
         tick: qa.TickEvent,
     ):
+        # self.bu.on_tick(tick)
+
         self.rsi.add(float(tick.tick.close))
-        # print(tick.tick.datetime, tick.tick.symbol, tick.tick.close)
 
         if len(self.rsi) < 2 or self.rsi[-2] is None:
             return
@@ -36,3 +40,9 @@ class Strategy(qa.TradingSignalSource):
         elif self.rsi[-2] <= self._overbought_level and self.rsi[-1] > self._overbought_level:
             self.push(qa.TradingSignal(tick.when, qa.Direction.SHORT, tick.tick.pair))
             # self.short(tick.when, tick.tick.pair)
+
+    def on_15min_bar(
+        self,
+        bar
+    ):
+        pass

@@ -1,8 +1,9 @@
 
-from typing import Dict, Optional, List, Any
+from typing import Dict, List, Any
 
 import qa
-from qa.external.sim import csv
+from ..td_api import TdApi
+
 
 def get_order_channel(
     pair: qa.Pair,
@@ -15,7 +16,7 @@ def get_trade_channel(
     return f"{str(pair)}"
 
 
-class TradeSource(qa.FifoQueueEventSource):
+class TdSource(qa.FifoQueueEventSource):
     def __init__(
         self,
     ):
@@ -59,77 +60,81 @@ class TradeSource(qa.FifoQueueEventSource):
         order_handlers = self._order_event_handlers.get(get_order_channel(pair), [])
         trade_handlers = self._trade_event_handlers.get(get_trade_channel(pair), [])
         for order_handler in order_handlers:
-            order_handler(event)
+            await order_handler(event)
         trade = qa.Trade()
         trade.symbol = event.order.symbol
         trade.exchange = event.order.exchange
         trade.datetime = event.order.datetime
+        trade.price = event.order.price
+        trade.volume = event.order.volume
+        trade.direction = event.order.direction
         for trade_handler in trade_handlers:
-            trade_handler(qa.TradeEvent(trade))
+            await trade_handler(qa.TradeEvent(trade))
 
 
-class TradeFactory(qa.TdApi):
+class TdFactory(TdApi):
     def __init__(
         self,
         zone: qa.Zone,
     ):
         self._zone = zone
-        # self._event_sources: Dict[str, qa.EventSource] = {}
-        self._order_event_source: Optional[TradeSource] = None
+        self._order_event_source: TdSource = TdSource()
+
+        self._zone.subscribe(self._order_event_source, self._order_event_source.event_dispatch)
 
     def subscribe_to_order(
         self,
         pair: qa.Pair,
-        event_handler: qa.TickEventHandler,
+        event_handler: qa.OrderEventHandler,
     ):
-        if self._order_event_source is None:
-            self._order_event_source = TradeSource()
-            self._zone.subscribe(self._order_event_source, self._order_event_source.event_dispatch)
         self._order_event_source.subscribe_order(pair, event_handler)
         
 
     def subscribe_to_trade(
         self,
         pair: qa.Pair,
-        event_handler: qa.TickEventHandler,
+        event_handler: qa.TradeEventHandler,
     ):
-        if self._order_event_source is None:
-            self._order_event_source = TradeSource()
-            self._zone.subscribe(self._order_event_source, self._order_event_source.event_dispatch)
         self._order_event_source.subscribe_trade(pair, event_handler)
 
-    async def create_makert_order(
+    async def create_market_order(
         self,
         pair: qa.Pair,
         operation: qa.OrderOperation,
         **kwargs: Dict[str, Any],
     ):
-        # self._order_event_source.push()
-        print(f'create market order [{pair}]-[{operation}]')
         order = qa.Order()
         order.symbol = pair.base_symbol
         order.exchange = pair.quote_symbol
         order.datetime = kwargs['datetime']
+        order.direction = operation
         self._order_event_source.push(qa.OrderEvent(order))
         pass
 
     async def create_limit_order(
         self,
         pair: qa.Pair,
+        operation: qa.OrderOperation,
+        **kwargs: Dict[str, Any],
     ):
-        # self._order_event_source.push()
+        order = qa.Order()
+        order.symbol = pair.base_symbol
+        order.exchange = pair.quote_symbol
+        order.datetime = kwargs['datetime']
+        order.volume = kwargs['volume']
+        order.price = kwargs['price']
+        order.direction = operation
+        self._order_event_source.push(qa.OrderEvent(order))
         pass
 
     async def create_stop_limit_order(
         self,
         pair: qa.Pair,
     ):
-        # self._order_event_source.push()
         pass
 
     async def cancel_order(
         self,
         pair: qa.Pair,
     ):
-        # self._order_event_source.push()
         pass
