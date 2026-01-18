@@ -2,7 +2,8 @@
 from typing import Dict
 
 import qa
-from .. import csv
+# from .. import csv
+from qa.external.common import csv
 
 
 def get_tick_channel(

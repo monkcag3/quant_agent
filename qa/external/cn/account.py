@@ -33,6 +33,9 @@ class PortfolioMetrics:
         self.win_rate          : float = 0.0
         self._buy_slot: Optional[Trade] = None
 
+        self._sell_cnt : int = 0
+        self._win_sell_cnt: int = 0
+
     def on_tick(self, tick: Tick):
         """计算浮动收益"""
         pass
@@ -50,15 +53,19 @@ class PortfolioMetrics:
             self._buy_slot = copy.deepcopy(trade)
             logger.warning(f'开 - 代码[{trade.symbol}]- 成交价[{price}] - 成交量[{trade.volume}]')
         elif trade.direction == OrderOperation.SELL:
+            self._sell_cnt += 1
             # print(self.init_capital, self.acc.available)
             # print('-------------', (self.acc.available - self.init_capital) / self.init_capital)
             # self._pair[1] = Decimal(trade.price * trade.volume)
             delta = Decimal(Decimal(trade.price * trade.volume) - Decimal(self._buy_slot.price * self._buy_slot.volume)).quantize(Decimal("0.01"))
             logger.warning(f'平 - 代码[{trade.symbol}]- 成交价[{price}] - 成交量[{trade.volume}]')
             if delta > 0:
-                print(f'单笔盈利[{delta}] 账户金额[{available}]')
+                self._win_sell_cnt += 1
+                self.win_rate = self._win_sell_cnt / self._sell_cnt * 100
+                print(f'单笔盈利[{delta}] 账户金额[{available}] 胜率[{self.win_rate}%]')
             else:
-                print(f'单笔亏损[{delta}] 账户金额[{available}]')
+                self.win_rate = self._win_sell_cnt / self._sell_cnt * 100
+                print(f'单笔亏损[{delta}] 账户金额[{available}] 胜率[{self.win_rate}%]')
             print('-'*50)
         pass
 

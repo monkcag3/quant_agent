@@ -2,10 +2,7 @@
 import asyncio
 
 import qa
-from qa.gallary import rsi
-# from qa.external.sim import csv
-# from qa.external.sim.account import QAccount
-from qa.external.cn import csv
+from qa.gallary import rsi, bbands, dmac
 from qa.external.cn.account import QAccount
 from qa.external.cn.sim import SimMd, SimTd
 
@@ -18,14 +15,14 @@ async def main():
     pair = qa.Pair('600000', 'SSE')
     
     strategy = rsi.Strategy(zone, 7, 30, 70)
+    # strategy = bbands.Strategy(zone, 30, 2)
+    # strategy = dmac.Strategy(zone, 7, 30)
 
     # 行情
-    # md = csv.TickFactory(zone)
     md = SimMd(zone)
     md.subscribe(pair, strategy.on_tick_event)
 
     # 交易
-    # td = csv.TradeFactory(zone)
     td = SimTd(zone)
     account = QAccount(td_api=td)
     md.subscribe(pair, account.on_tick)

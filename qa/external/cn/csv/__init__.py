@@ -1,4 +1,0 @@
-
-from .tick import (
-    TickSource,
-)
