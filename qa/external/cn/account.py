@@ -6,12 +6,13 @@ import logging
 from typing import Any, Optional
 from decimal import Decimal
 import dataclasses
-from datetime import datetime
+from datetime import datetime, timedelta
 
 import qa
 from qa.core.meta import Order, Trade, Tick, TickEvent, OrderEvent, TradeEvent
 from qa.core.const import OrderOperation
 from .td_api import TdApi
+from qa.external.common.metric import WinRateMetric, TotalReturnMetric, MaxDrawdownMetric, SharpeRatioMetric
 
 
 logger = logging.getLogger(__name__)
@@ -22,25 +23,19 @@ class PortfolioMetrics:
         self.acc = acc
         self.init_capital = acc.available
 
-        self.total_return      : float = 0.0
-        self.annual_return     : float = 0.0
-        self.total_return_pct  : float = 0.0
-        self.annual_return_pct : float = 0.0
-        self.max_drawdown      : float = 0.0
-        self.max_drawdown_pct  : float = 0.0
-        self.sharpe_ratio      : float = 0.0
-        self.sortino_ratio     : float = 0.0
-        self.win_rate          : float = 0.0
         self._buy_slot: Optional[Trade] = None
 
-        self._sell_cnt : int = 0
-        self._win_sell_cnt: int = 0
+        self._win_rate_metric: WinRateMetric = WinRateMetric()
+        self._total_return_metric: TotalReturnMetric = TotalReturnMetric()
+        self._max_drawdown_metric: MaxDrawdownMetric = MaxDrawdownMetric(acc)
+        self._sharpe_ratio_metric: SharpeRatioMetric = SharpeRatioMetric(acc)
+
 
     def on_tick(self, tick: Tick):
         """计算浮动收益"""
         pass
 
-    def on_trade(
+    async def on_trade(
         self,
         trade: Trade
     ):
@@ -49,23 +44,22 @@ class PortfolioMetrics:
         available = Decimal(self.acc.available).quantize(Decimal("0.01"))
         if trade.direction == OrderOperation.BUY:
             print('-'*50)
-            # self._pair[0] = Decimal(trade.price * trade.volume)
             self._buy_slot = copy.deepcopy(trade)
-            logger.warning(f'开 - 代码[{trade.symbol}]- 成交价[{price}] - 成交量[{trade.volume}]')
+            logger.warning(f'开[{trade.datetime}] - 代码[{trade.symbol}]- 成交价[{price}] - 成交量[{trade.volume}]')
         elif trade.direction == OrderOperation.SELL:
-            self._sell_cnt += 1
-            # print(self.init_capital, self.acc.available)
-            # print('-------------', (self.acc.available - self.init_capital) / self.init_capital)
-            # self._pair[1] = Decimal(trade.price * trade.volume)
             delta = Decimal(Decimal(trade.price * trade.volume) - Decimal(self._buy_slot.price * self._buy_slot.volume)).quantize(Decimal("0.01"))
-            logger.warning(f'平 - 代码[{trade.symbol}]- 成交价[{price}] - 成交量[{trade.volume}]')
-            if delta > 0:
-                self._win_sell_cnt += 1
-                self.win_rate = self._win_sell_cnt / self._sell_cnt * 100
-                print(f'单笔盈利[{delta}] 账户金额[{available}] 胜率[{self.win_rate}%]')
-            else:
-                self.win_rate = self._win_sell_cnt / self._sell_cnt * 100
-                print(f'单笔亏损[{delta}] 账户金额[{available}] 胜率[{self.win_rate}%]')
+            logger.warning(f'平[{trade.datetime}] - 代码[{trade.symbol}]- 成交价[{price}] - 成交量[{trade.volume}]')
+
+            await self._win_rate_metric.calculate(self._buy_slot, trade)
+            await self._total_return_metric.calculate(self._buy_slot, trade)
+            await self._max_drawdown_metric.calculate(self._buy_slot, trade)
+            try:
+                await self._sharpe_ratio_metric.calculate(self._buy_slot, trade)
+            except Exception as e:
+                print(e)
+                
+            profit = '单笔盈利' if delta > 0 else '单笔亏损'
+            print(f'{profit}[{delta}] 账户金额[{available}] {self._win_rate_metric} {self._total_return_metric} {self._max_drawdown_metric} {self._sharpe_ratio_metric}')
             print('-'*50)
         pass
 
@@ -104,7 +98,7 @@ class QAccount:
 
         self._td_api = td_api
         
-        self._pos = 0
+        self._pos = (datetime.now(), 0) # 时间 & 仓位（手数）
 
     @property
     def available(self):
@@ -153,13 +147,14 @@ class QAccount:
     ):
         amount = event.trade.price * event.trade.volume
         if event.trade.direction == OrderOperation.BUY:
-            self._pos += event.trade.volume
+            # self._pos += event.trade.volume
+            self._pos = (event.trade.datetime, event.trade.volume)
             self._frozen_cash -= Decimal(amount)
         elif event.trade.direction == OrderOperation.SELL:
-            self._pos -= event.trade.volume
+            # self._pos -= event.trade.volume
+            self._pos = (event.trade.datetime, 0)
             self._available += Decimal(amount)
-        self._portfolio_metrics.on_trade(event.trade)
-
+        await self._portfolio_metrics.on_trade(event.trade)
         pass
 
     def on_tick(
@@ -196,9 +191,10 @@ class QAccount:
             # 计算当前可购买手数
             volume = Decimal(self.available) / quote.close
             volume = (volume // 100) * 100
-            if volume == 0:
+            if volume == 0 or self._pos[1] > 0:
                 return
             self._available -= Decimal(volume) * Decimal(quote.close)
+
             # 买
             await self._td_api.create_limit_order(
                 pair,
@@ -210,12 +206,14 @@ class QAccount:
         elif target_position == qa.Direction.SHORT:
             # 获取当前持仓
             # 卖
-            if self._pos > 0:
+            # T1
+            tm_delta = quote.datetime - self._pos[0]
+            if self._pos[1] > 0 and tm_delta > timedelta(hours=12):
                 await self._td_api.create_limit_order(
                     pair,
                     qa.OrderOperation.SELL,
                     datetime=quote.datetime,
                     price=quote.close,
-                    volume=self._pos
+                    volume=self._pos[1]
                 )
             pass
