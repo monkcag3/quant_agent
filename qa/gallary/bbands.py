@@ -2,9 +2,24 @@
 from talipp.indicators import BB
 
 import qa
+from qa.core.meta import Meta
 
 
-class Strategy(qa.TradingSignalSource):
+class Strategy(qa.TradingSignalSource, Meta):
+    display_name = "bbands"
+    params = [
+        {
+            "name": "period",
+            "display_name": "周期",
+            "type": "int"
+        },
+        {
+            "name": "std_dev",
+            "display_name": "标准差",
+            "type": "float"
+        },
+    ]
+
     def __init__(
         self,
         zone: qa.Zone,

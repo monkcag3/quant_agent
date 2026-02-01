@@ -2,9 +2,24 @@
 from talipp.indicators import EMA
 
 import qa
+from qa.core.meta import Meta
 
 
-class Strategy(qa.TradingSignalSource):
+class Strategy(qa.TradingSignalSource, Meta):
+    display_name = "dmac"
+    params = [
+        {
+            "name": "fastperiod",
+            "display_name": "快周期",
+            "type": "int"
+        },
+        {
+            "name": "slowperiod",
+            "display_name": "慢周期",
+            "type": "int"
+        },
+    ]
+
     def __init__(
         self,
         zone: qa.Zone,

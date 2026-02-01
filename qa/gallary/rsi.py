@@ -3,9 +3,31 @@ from talipp.indicators import RSI
 
 import qa
 from qa.core.utility import ArrayManager, BarUpdater
+from qa.core.meta import Meta
 
 
-class Strategy(qa.TradingSignalSource):
+class Strategy(qa.TradingSignalSource, Meta):
+    display_name = "rsi"
+    description = "Relative Strength Index."
+    params = [
+        {
+            "name": "period",
+            "display_name": "周期",
+            "type": "int"
+        },
+        {
+            "name": "oversold_level",
+            "display_name": "超买区",
+            "type": "float"
+        },
+        {
+            "name": "overbought_level",
+            "display_name": "超卖区",
+            "type": "float"
+        }
+    ]
+
+
     def __init__(
         self,
         zone: qa.Zone,
