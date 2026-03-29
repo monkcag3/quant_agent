@@ -18,59 +18,6 @@ from qa.external.common.metric import WinRateMetric, TotalReturnMetric, MaxDrawd
 logger = logging.getLogger(__name__)
 
 
-class PortfolioMetrics:
-    def __init__(self, acc: "QAccount"):
-        self.acc = acc
-        self.init_capital = acc.available
-
-        self._buy_slot: Optional[Trade] = None
-
-        self._win_rate_metric: WinRateMetric = WinRateMetric()
-        self._total_return_metric: TotalReturnMetric = TotalReturnMetric()
-        self._max_drawdown_metric: MaxDrawdownMetric = MaxDrawdownMetric(acc)
-        self._sharpe_ratio_metric: SharpeRatioMetric = SharpeRatioMetric(acc)
-
-
-    def on_tick(self, tick: Tick):
-        """计算浮动收益"""
-        pass
-
-    async def on_trade(
-        self,
-        trade: Trade
-    ):
-        """计算实际盈亏"""
-        price = Decimal(trade.price).quantize(Decimal("0.01"))
-        available = Decimal(self.acc.available).quantize(Decimal("0.01"))
-        if trade.direction == OrderOperation.BUY:
-            print('-'*50)
-            self._buy_slot = copy.deepcopy(trade)
-            logger.warning(f'开[{trade.datetime}] - 代码[{trade.symbol}]- 成交价[{price}] - 成交量[{trade.volume}]')
-        elif trade.direction == OrderOperation.SELL:
-            delta = Decimal(Decimal(trade.price * trade.volume) - Decimal(self._buy_slot.price * self._buy_slot.volume)).quantize(Decimal("0.01"))
-            logger.warning(f'平[{trade.datetime}] - 代码[{trade.symbol}]- 成交价[{price}] - 成交量[{trade.volume}]')
-
-            await self._win_rate_metric.calculate(self._buy_slot, trade)
-            await self._total_return_metric.calculate(self._buy_slot, trade)
-            await self._max_drawdown_metric.calculate(self._buy_slot, trade)
-            try:
-                await self._sharpe_ratio_metric.calculate(self._buy_slot, trade)
-            except Exception as e:
-                print(e)
-                
-            profit = '单笔盈利' if delta > 0 else '单笔亏损'
-            print(f'{profit}[{delta}] 账户金额[{available}] {self._win_rate_metric} {self._total_return_metric} {self._max_drawdown_metric} {self._sharpe_ratio_metric}')
-            print('-'*50)
-        pass
-
-    def summrize(self):
-        print("="*50)
-        print("TRADING STRATEGY PERFORMANCE REPORT")
-        print("="*50)
-        print("-"*30)
-        print("="*50)
-
-
 @dataclasses.dataclass
 class Position:
     pair: qa.Pair
@@ -91,7 +38,6 @@ class QAccount:
         self._available: Decimal = Decimal(init_capital)
         self._withdraw_quota: Decimal = self._available
         self._frozen_cash: Decimal = 0
-        self._portfolio_metrics = PortfolioMetrics(self)
 
         self._quotes = defaultdict(list)
         self._positions = defaultdict(list)
@@ -154,7 +100,6 @@ class QAccount:
             # self._pos -= event.trade.volume
             self._pos = (event.trade.datetime, 0)
             self._available += Decimal(amount)
-        await self._portfolio_metrics.on_trade(event.trade)
         pass
 
     def on_tick(
