@@ -45,7 +45,6 @@ class XtQuantDuckDBStorage:
         ddl = """
         CREATE TABLE IF NOT EXISTS tick (dt_tz TIMESTAMPTZ PRIMARY KEY, price DECIMAL(18,2), volume DECIMAL(18,0), amount DECIMAL(18,2));
         CREATE TABLE IF NOT EXISTS bar_1m (dt_tz TIMESTAMPTZ PRIMARY KEY, open DECIMAL(18,2), high DECIMAL(18,2), low DECIMAL(18,2), close DECIMAL(18,2), volume DECIMAL(18,0), amount DECIMAL(18,2));
-        CREATE TABLE IF NOT EXISTS bar_5m (dt_tz TIMESTAMPTZ PRIMARY KEY, open DECIMAL(18,2), high DECIMAL(18,2), low DECIMAL(18,2), close DECIMAL(18,2), volume DECIMAL(18,0), amount DECIMAL(18,2));
         CREATE TABLE IF NOT EXISTS bar_1d (dt_tz TIMESTAMPTZ PRIMARY KEY, open DECIMAL(18,2), high DECIMAL(18,2), low DECIMAL(18,2), close DECIMAL(18,2), volume DECIMAL(18,0), amount DECIMAL(18,2));
         """
         con.execute(ddl)
@@ -83,20 +82,8 @@ def single_download_and_save(
     start: str,
     end: str,
 ) -> None:
-    base_cnt = 0
-    while True:
-        cnt = 0
-        try:
-            
-            for symbol in tqdm(stock_list[base_cnt:]):
-                xtdata.download_history_data(symbol, period, start, end, True)
-                cnt += 1
-        except Exception as e:
-            time.sleep(1)
-            print(e)
-        base_cnt += cnt
-        if base_cnt >= len(stock_list):
-            break
+    for symbol in tqdm(stock_list):
+        xtdata.download_history_data(symbol, period, start, end, True)
     save_to_duckdb(stock_list, period, start, end)
 
 
@@ -104,7 +91,6 @@ def download_and_save(
     start: str,
     end: str,
 ):
-    print(start, end)
     stock_list = xtdata.get_stock_list_in_sector("沪深A股")
 
     # 历史日线
@@ -146,6 +132,33 @@ def daily_update():
 
 # ==================== 【一键下载全市场】 ====================
 if __name__ == "__main__":
-    get_full_history()
+    from tqdm  import tqdm 
+    # storage = XtQuantDuckDBStorage()
 
+    # stock_list = xtdata.get_stock_list_in_sector("沪深A股")
+    # now = datetime.now().strftime("%Y%m%d")
+
+    # # 下载所有股票 日线（上市至今）
+    # period = '1d'
+    # for symbol in tqdm (stock_list):
+    #     xtdata.download_history_data(symbol, period, "19700101", now, True)
+    # save_to_duckdb(stock_list, period, '19700101', now)
+
+    # # 下载所有股票 5分钟（最近1年）
+    # period = '5m'
+    # for symbol in tqdm (stock_list):
+    #     xtdata.download_history_data(symbol, period, "19700101", now, True)
+    # save_to_duckdb(stock_list, period, '19700101', now)
+
+    # # 下载所有股票 1分钟（最近1年）
+    # period = '1m'
+    # for symbol in tqdm (stock_list):
+    #     xtdata.download_history_data(symbol, period, "19700101", now, True)
+    # save_to_duckdb(stock_list, period, '19700101', now)
+
+    # # 下载所有股票 Tick（最近30天）
+    # period = 'tick'
+    # for symbol in tqdm (stock_list):
+    #     xtdata.download_history_data(symbol, period, "19700101", now, True)
+    # save_to_duckdb(stock_list, period, '19700101', now)
     daily_update()
