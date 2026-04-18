@@ -33,8 +33,8 @@ class RowParser(csv.RowParser):
         return [
             tick.TickEvent(
                 tick.Tick(
-                    symbol = self.pair.base_symbol,
-                    exchange = self.pair.quote_symbol,
+                    symbol = self.pair.symbol,
+                    exchange = self.pair.exchange,
                     datetime = dt,
                     volume = volume,
                     turnover = Decimal(row_dict["amount"]),

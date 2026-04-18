@@ -6,18 +6,18 @@ import dataclasses
 class Pair:
     """A trading pair.
 
-    :param base_symbol: The base symbol. It could be a stock, a crypto currency, a currency, etc.
-    :param quote_symbol: The quote symbol. It could be a stock, a crypto currency, a currency, etc.
+    :param symbol: The base symbol. It could be a stock, a crypto currency, a currency, etc.
+    :param exchange: The quote symbol. It could be a stock, a crypto currency, a currency, etc.
     """
 
     #: The base symbol.
-    base_symbol: str
+    symbol: str
 
     #: The quote symbol.
-    quote_symbol: str
+    exchange: str
 
     def __str__(self):
-        return "{}.{}".format(self.base_symbol, self.quote_symbol)
+        return "{}.{}".format(self.symbol, self.exchange)
 
 
 @dataclasses.dataclass(frozen=True)

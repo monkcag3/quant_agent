@@ -104,8 +104,8 @@ class TdFactory(TdApi):
         **kwargs: Dict[str, Any],
     ):
         order = qa.Order()
-        order.symbol = pair.base_symbol
-        order.exchange = pair.quote_symbol
+        order.symbol = pair.symbol
+        order.exchange = pair.exchange
         order.datetime = kwargs['datetime']
         order.direction = operation
         self._order_event_source.push(qa.OrderEvent(order))
@@ -118,8 +118,8 @@ class TdFactory(TdApi):
         **kwargs: Dict[str, Any],
     ):
         order = qa.Order()
-        order.symbol = pair.base_symbol
-        order.exchange = pair.quote_symbol
+        order.symbol = pair.symbol
+        order.exchange = pair.exchange
         order.datetime = kwargs['datetime']
         order.volume = kwargs['volume']
         order.price = kwargs['price']

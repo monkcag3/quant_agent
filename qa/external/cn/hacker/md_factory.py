@@ -35,7 +35,7 @@ class MdFactory(qa.Producer, qa.FifoQueueEventSource):
         pair: qa.Pair,
         event_handler: qa.TickEventHandler,
     ):
-        channel = str(pair.base_symbol)
+        channel = str(pair.symbol)
         if channel not in self._quotes.keys():
             self._quotes[channel] = [event_handler]
         else:
