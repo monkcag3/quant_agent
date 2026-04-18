@@ -55,13 +55,12 @@ class TickSource(event.EventSource, event.Producer):
             for item in batch:
                 if item[-2] == 0:
                     continue
-                print(item)
                 yield TickEvent(
                     Tick(
                         symbol=self._pair.symbol,
                         exchange=self._pair.exchange,
                         datetime=item[0],
-                        open_price=[1],
+                        open_price=item[1],
                         high_price=item[2],
                         low_price=item[3],
                         pre_close=item[4],
