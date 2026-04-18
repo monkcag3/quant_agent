@@ -1,5 +1,6 @@
 
 import asyncio
+from dotenv import load_dotenv
 
 import qa
 from qa.gallary import rsi, bbands, dmac
@@ -7,6 +8,7 @@ from qa.external.cn.account import QAccount
 from qa.external.cn.sim import SimMd, SimTd
 
 asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+load_dotenv()
 
 
 
