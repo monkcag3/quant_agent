@@ -87,13 +87,6 @@ class LineChart(metaclass=abc.ABCMeta):
     ):
         raise NotImplementedError()
 
-    @abc.abstractmethod
-    def update(
-        self,
-        bar: Bar,
-    ):
-        raise NotImplementedError()
-
 
 class PairLineChart(LineChart):
     def __init__(
@@ -110,14 +103,14 @@ class PairLineChart(LineChart):
         
         # K线数据存储（适配lightweight-charts的OHLC格式）
         self._ohlc_data = {
-            'time': [], 'open': [], 'high': [], 'low': [], 'close': []
+            'date': [], 'open': [], 'high': [], 'low': [], 'close': []
         }
         # 买卖订单标记
         self._buy_markers = []  # [(time, price), ...]
         self._sell_markers = []  # [(time, price), ...]
-        
-        self.buy_marker_size = 10
-        self.sell_marker_size = 10
+    
+        self.bs_markers = []
+
         # 子图对象（后续绑定）
         self._subplot: Optional[AbstractChart] = None
 
@@ -127,8 +120,8 @@ class PairLineChart(LineChart):
     def _prepare_ohlc_df(self) -> pd.DataFrame:
         """构建lightweight-charts兼容的OHLC DataFrame"""
         df = pd.DataFrame(self._ohlc_data)
-        if not df.empty:
-            df['time'] = pd.to_datetime(df['time']).dt.strftime('%Y-%m-%d %H:%M:%S')
+        # if not df.empty:
+        #     df['time'] = pd.to_datetime(df['time']).dt.strftime('%Y-%m-%d %H:%M:%S')
         return df
 
     def render(self, parent_chart: Chart, row: int):
@@ -141,25 +134,7 @@ class PairLineChart(LineChart):
         
         # 渲染K线/折线
         ohlc_df = self._prepare_ohlc_df()
-        if not ohlc_df.empty:
-            if self._candlesticks:
-                self._subplot.set(
-                    ohlc_df,
-                    # type='candlestick',
-                    # color_up='red',
-                    # color_down='green',
-                    # border_up='red',
-                    # border_down='green',
-                    # wick_up='red',
-                    # wick_down='green'
-                )
-            else:
-                self._subplot.set(
-                    ohlc_df[['time', 'close']].rename(columns={'close': 'value'}),
-                    # type='line',
-                    # color='#2962FF',
-                    # line_width=2
-                )
+        self._subplot.set(ohlc_df)
         
         # 渲染买卖标记
         self._render_order_markers()
@@ -168,81 +143,33 @@ class PairLineChart(LineChart):
         """渲染买卖订单标记"""
         if not self._subplot:
             return
-        
-        # 买入标记（向上箭头）
-        if self._include_buys and self._buy_markers:
-            buy_df = pd.DataFrame(self._buy_markers, columns=['time', 'price'])
-            # buy_df['time'] = pd.to_datetime(buy_df['time']).dt.strftime('%Y-%m-%d %H:%M:%S')
 
-            for (dt, price) in self._buy_markers:
-                self._subplot.marker(
-                    dt,
-                    # name='BUY',
-                    color='red',
-                    shape='arrow_up',
-                )
-        
-        # 卖出标记（向下箭头）
-        if self._include_sells and self._sell_markers:
-            sell_df = pd.DataFrame(self._sell_markers, columns=['time', 'price'])
-            # sell_df['time'] = pd.to_datetime(sell_df['time']).dt.strftime('%Y-%m-%d %H:%M:%S')
-            for (dt, price) in self._sell_markers:
-                self._subplot.marker(
-                    dt,
-                    # name='SELL',
-                    color='green',
-                    shape='arrow_down',
-                )
-
-    def update(self, bar: Bar):
-        """更新单根K线数据（适配动态更新）"""
-        if not self._subplot:
-            return
-        
-        # 格式化时间
-        dt_str = pd.to_datetime(bar.datetime).strftime('%Y-%m-%d %H:%M:%S')
-        
-        # 构建单根K线数据
-        bar_data = {
-            'time': dt_str,
-            'open': float(bar.open),
-            'high': float(bar.high),
-            'low': float(bar.low),
-            'close': float(bar.close)
-        }
-        
-        # 更新K线/折线
-        if self._candlesticks:
-            self._subplot.update(pd.DataFrame([bar_data]))
-        else:
-            self._subplot.update(pd.DataFrame([{'time': dt_str, 'value': float(bar.close)}]))
+        for (op, dt, _) in self.bs_markers:
+            if op == 'B':
+                position, color, shape = 'below', 'red', 'arrow_up'
+            else:
+                position, color, shape = 'above', 'green', 'arrow_down'
+            self._subplot.marker(
+                dt,
+                position=position,
+                color=color,
+                shape=shape,
+            )
+            
 
     def on_order(self, order: Order) -> None:
         """记录订单数据（用于渲染标记）"""
-        op = "BUY" if order.direction == OrderOperation.BUY else "SELL"
-        price = float(order.price)
-        # time_str = pd.to_datetime(order.datetime).strftime('%Y-%m-%d %H:%M:%S')
-        
-        if op == "BUY" and self._include_buys:
-            self._buy_markers.append((order.datetime, price))
-        elif op == "SELL" and self._include_sells:
-            self._sell_markers.append((order.datetime, price))
-        
-        # 动态更新标记（如果子图已初始化）
-        if self._subplot:
-            self._render_order_markers()
+        marker = "B" if order.direction == OrderOperation.BUY else "S"
+        self.bs_markers.append((marker, order.datetime, order.price))
 
     def on_bar(self, bar: Bar) -> None:
         """处理K线数据"""
         # 存储K线数据
-        self._ohlc_data['time'].append(bar.datetime)
+        self._ohlc_data['date'].append(bar.datetime)
         self._ohlc_data['open'].append(float(bar.open))
         self._ohlc_data['high'].append(float(bar.high))
         self._ohlc_data['low'].append(float(bar.low))
         self._ohlc_data['close'].append(float(bar.close))
-        
-        # 动态更新图表
-        self.update(bar)
 
 
 class LineCharts:
@@ -292,7 +219,6 @@ class LineCharts:
             row += 1
         
         # 显示图表（阻塞模式）
-        # self._main_chart.show(block=True)
         await self._main_chart.show_async()
 
     async def on_tick(self, tick: TickEvent):
