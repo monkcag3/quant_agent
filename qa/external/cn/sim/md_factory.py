@@ -1,4 +1,5 @@
 
+from calendar import c
 import os
 from pathlib import Path
 
@@ -49,10 +50,15 @@ class MdFactory:
         self,
         pair: qa.Pair,
         event_handler: qa.TickEventHandler,
+        start_time: str|None=None,
+        end_time: str|None=None,
     ):
-        event_source = self._event_sources.get(get_tick_channel(pair))
+        channel = get_tick_channel(pair)
+        event_source = self._event_sources.get(channel)
         # if not event_source:
         #     event_source = csv.TickSource(pair, f'{pair.symbol}.u.csv')
         if not event_source:
-            event_source = ddb.TickSource(pair, get_symbol_db(pair))
+            event_source = ddb.TickSource(pair, get_symbol_db(pair), start_time, end_time)
+            self._event_sources[channel] = event_source
+
         self._zone.subscribe(event_source, event_handler)
