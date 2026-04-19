@@ -552,10 +552,12 @@ class BarUpdater:
         self.last_time: Optional[datetime] = None
         self.last_time_point: int = 0
 
+        self.window_bar_end = True
+        self.daily_bar_end = True
+
         # 冗余bar数据：am包含bar数据，在回调时使用此bar作为参数
         # self._bar = Bar()
         self.current_bar: Optional[Bar] = None
-        self.daily_bar_end = True
 
         self._on_am_bar = self.__get_unit_handler__()
 
@@ -577,7 +579,6 @@ class BarUpdater:
         tick: Tick
     ) -> None:
         # tick_time = datetime.strptime(str(tick.datetime), "%Y%m%d%H%M%S%f")
-
         tick_time = tick.datetime
         if self.last_time is None:
             self.last_time = tick_time
@@ -590,8 +591,16 @@ class BarUpdater:
         tick: Tick,
         tick_time: datetime
     ) -> None:
-        time_point = tick_time.second // self._interval
-        self.__process_tick__(tick, tick_time, time_point)
+        # time_point = tick_time.second // self._interval
+        # self.__process_tick__(tick, tick_time, time_point)
+        if self.window_bar_end:
+            self.window_bar_end=False
+            self.__new_bar__(tick)
+        elif not tick.datetime.second % self._interval:
+            self.window_bar_end=True
+            self.__update_bar__(tick, is_end=True)
+        else:
+            self.__update_bar__(tick, is_end=False)
     
 
     def __on_minute_bar__(
@@ -599,16 +608,32 @@ class BarUpdater:
         tick: Tick,
         tick_time: datetime
     ) -> None:
-        time_point = tick_time.minute // self._interval
-        self.__process_tick__(tick, tick_time, time_point)
+        # time_point = tick_time.minute // self._interval
+        # self.__process_tick__(tick, tick_time, time_point)
+        if self.window_bar_end:
+            self.window_bar_end=False
+            self.__new_bar__(tick)
+        elif not tick.datetime.minute % self._interval:
+            self.window_bar_end=True
+            self.__update_bar__(tick, is_end=True)
+        else:
+            self.__update_bar__(tick, is_end=False)
 
     def __on_hour_bar__(
         self,
         tick: Tick,
         tick_time: datetime
     ) -> None:
-        time_point = tick_time.hour // self._interval
-        self.__process_tick__(tick, tick_time, time_point)
+        # time_point = tick_time.hour // self._interval
+        # self.__process_tick__(tick, tick_time, time_point)
+        if self.window_bar_end:
+            self.window_bar_end=False
+            self.__new_bar__(tick)
+        elif not tick.datetime.hour % self._interval:
+            self.window_bar_end=True
+            self.__update_bar__(tick, is_end=True)
+        else:
+            self.__update_bar__(tick, is_end=False)
 
     def __on_daily_bar__(
         self,
