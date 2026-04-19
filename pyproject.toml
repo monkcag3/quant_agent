@@ -9,6 +9,7 @@ dependencies = [
     "dotenv>=0.9.9",
     "duckdb>=1.5.2",
     "numpy>=2.3.5",
+    "plotly>=6.7.0",
     "ta-lib>=0.6.8",
     "talipp>=2.7.0",
     "tqdm>=4.67.3",

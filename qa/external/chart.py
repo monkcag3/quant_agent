@@ -280,9 +280,9 @@ class LineCharts:
     def on_bar(
         self,
         bar: Bar,
-        is_new: bool,
+        is_end: bool,
     ) -> None:
-        if is_new:
+        if is_end:
             for (key, value) in self._pair_chats.items():
                 value.on_bar(bar)
 
