@@ -103,7 +103,7 @@ class PairLineChart(LineChart):
         
         # K线数据存储（适配lightweight-charts的OHLC格式）
         self._ohlc_data = {
-            'date': [], 'open': [], 'high': [], 'low': [], 'close': []
+            'date': [], 'open': [], 'high': [], 'low': [], 'close': [], 'volume': []
         }
         # 买卖订单标记
         self._buy_markers = []  # [(time, price), ...]
@@ -170,6 +170,7 @@ class PairLineChart(LineChart):
         self._ohlc_data['high'].append(float(bar.high))
         self._ohlc_data['low'].append(float(bar.low))
         self._ohlc_data['close'].append(float(bar.close))
+        self._ohlc_data['volume'].append(float(bar.volume)*100)
 
 
 class LineCharts:
@@ -210,6 +211,10 @@ class LineCharts:
         self._main_chart.candle_style(
             up_color = 'rgba(200, 97, 100, 100)',
             down_color = 'rgba(39, 157, 130, 100)',
+        )
+        self._main_chart.volume_config(
+            up_color='rgba(200,127,130,0.8)',
+            down_color='rgba(83,141,131,0.8)',
         )
 
         # 渲染所有交易对的子图
