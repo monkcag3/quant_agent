@@ -23,7 +23,7 @@ async def main():
 
     # 行情
     md = SimMd(zone)
-    md.subscribe(pair, strategy.on_tick_event, '20260408', '20260418')
+    md.subscribe(pair, strategy.on_tick_event, '20250408', '20260418')
 
     # 交易
     td = SimTd(zone)
@@ -38,10 +38,11 @@ async def main():
     chart.add_pair(pair)
     md.subscribe(pair, chart.on_tick)
     td.subscribe_to_order(pair, chart.on_order)
+    
 
     await zone.run()
 
-    chart.show()
+    await chart.show()
 
 
 if __name__ == "__main__":
