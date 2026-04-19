@@ -6,7 +6,7 @@ import logging
 from typing import Any, Optional
 from decimal import Decimal
 import dataclasses
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 import qa
 from qa.core.meta import Order, Trade, Tick, TickEvent, OrderEvent, TradeEvent
@@ -98,7 +98,7 @@ class QAccount:
 
         self._td_api = td_api
         
-        self._pos = (datetime.now(), 0) # 时间 & 仓位（手数）
+        self._pos = (datetime.now(timezone.utc), 0) # 时间 & 仓位（手数）
 
     @property
     def available(self):
