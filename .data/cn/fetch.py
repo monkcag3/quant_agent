@@ -27,14 +27,13 @@ class XtQuantDuckDBStorage:
         if exchange == 'SZ':
             exchange = 'SZSE'
         elif exchange == 'SH':
-            exchange = 'SSH'
+            exchange = 'SSE'
         path = DATA_ROOT / nation / exchange / symbol_simple / f"{symbol_simple}.duckdb"
         path.parent.mkdir(parents=True, exist_ok=True)
         return path
 
     def get_db(self, exchange, symbol):
         path = self.get_db_path(exchange, symbol)
-        print(path)
 
         con = duckdb.connect(str(path))
         self._create_tables(con)
@@ -61,6 +60,11 @@ def save_to_duckdb(
     end_time: str,
 ) -> None:
     storage = XtQuantDuckDBStorage()
+    print(f"写入数据库")
+    if period == 'tick':
+        table = 'tick'
+    else:
+        table = f'bar_{period}'
     for symbol in tqdm (stock_list):
 
         items = xtdata.get_local_data([], stock_list=[symbol], period=period, start_time=start_time, end_time=end_time,)
@@ -72,9 +76,9 @@ def save_to_duckdb(
             df["dt_tz"] = pd.to_datetime(df["time"], unit="ms", utc=True).dt.tz_convert(TZ_CHINA)
             df = df.drop(columns=["time"])
 
-            con.execute(f"INSERT OR REPLACE INTO bar_{period} SELECT dt_tz, open, high, low, close, volume, amount FROM df")
-            print(f"✅ {symbol} | {period} | 写入 {len(df)} 行")
+            con.execute(f"INSERT OR REPLACE INTO {table} SELECT dt_tz, open, high, low, close, volume, amount FROM df")
             con.close()
+    print(f"✅写入成功")
 
 
 def single_download_and_save(
@@ -90,6 +94,7 @@ def single_download_and_save(
             
             for symbol in tqdm(stock_list[base_cnt:]):
                 xtdata.download_history_data(symbol, period, start, end, True)
+
                 cnt += 1
         except Exception as e:
             time.sleep(1)
@@ -110,14 +115,14 @@ def download_and_save(
     # 历史日线
     single_download_and_save(stock_list, '1d', start, end)
 
-    # # 历史5min线
-    # single_download_and_save(stock_list, '5m', start, end)
+    # # # 历史5min线
+    # # single_download_and_save(stock_list, '5m', start, end)
 
     # 历史1min线
     single_download_and_save(stock_list, '1m', start, end)
 
-    # 历史tick
-    single_download_and_save(stock_list, 'tick', start, end)
+    # # 历史tick
+    # single_download_and_save(stock_list, 'tick', start, end)
 
 
 
@@ -146,6 +151,6 @@ def daily_update():
 
 # ==================== 【一键下载全市场】 ====================
 if __name__ == "__main__":
-    get_full_history()
+    # get_full_history()
 
     daily_update()
