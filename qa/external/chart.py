@@ -120,16 +120,10 @@ class PairLineChart(LineChart):
     def _prepare_ohlc_df(self) -> pd.DataFrame:
         """构建lightweight-charts兼容的OHLC DataFrame"""
         df = pd.DataFrame(self._ohlc_data)
-        # if not df.empty:
-        #     df['time'] = pd.to_datetime(df['time']).dt.strftime('%Y-%m-%d %H:%M:%S')
         return df
 
     def render(self, parent_chart: Chart, row: int):
         """渲染到lightweight-charts的子图"""
-        # 创建子图
-        # self._subplot = parent_chart.create_subchart(
-        #     position=f'left{row}' if row > 1 else 'left'
-        # )
         self._subplot = parent_chart
         
         # 渲染K线/折线
@@ -206,7 +200,6 @@ class LineCharts:
             width=1200,
             height=800,
             toolbox=True,  # 显示工具栏
-            # grid=True,     # 显示网格
         )
         self._main_chart.candle_style(
             up_color = 'rgba(200, 97, 100, 100)',
@@ -216,14 +209,50 @@ class LineCharts:
             up_color='rgba(200,127,130,0.8)',
             down_color='rgba(83,141,131,0.8)',
         )
+        self._main_chart.run_script(f"""
+           {self._main_chart.id}.chart.applyOptions({{
+                timeScale: {{
+                    tickMarkFormatter: (time, tickMarkType, locale) => {{
+                        const date = new Date(time * 1000);
+                        switch(tickMarkType) {{
+                            case 0: return date.getFullYear() + '年';
+                            case 1: return date.getMonth() + 1 + '月';
+                            case 2: return date.getDate() + ' ';
+                            case 3: return date.getHours() + ':';
+                            default: return '';
+                        }}
+                    }}
+                }},
+                localization: {{
+                    locale: 'zh-CN',
+                    timeFormatter: function(businessDayOrTimestamp) {{
+                        if (typeof bussinessDayOrTimestamp === 'object' &&
+                                bussinessDayOrTimestamp.year != undefined) {{
+                            return bussinessDayOrTimestamp.year + '-' +
+                                bussinessDayOrTimestamp.month + '-' +
+                                bussinessDayOrTimestamp.day;
+                        }}
 
-        # 渲染所有交易对的子图
+                        const date = new Date(businessDayOrTimestamp * 1000);
+                
+                        const yyyy = date.getFullYear();
+                        const mm = String(date.getMonth() + 1).padStart(2, '0');
+                        const dd = String(date.getDate()).padStart(2, '0');
+                        const hh = String(date.getHours()).padStart(2, '0');
+                        const min = String(date.getMinutes()).padStart(2, '0');
+                        const ss = String(date.getSeconds()).padStart(2, '0');
+                        
+                        return yyyy + '-' + mm + '-' + dd + ' ' + hh + ':' + min + ':' + ss;
+                    }}
+                }}
+           }})
+        """)
+
         row = 1
-        for pair, chart in self._pair_charts.items():
+        for _, chart in self._pair_charts.items():
             chart.render(self._main_chart, row)
             row += 1
-        
-        # 显示图表（阻塞模式）
+
         await self._main_chart.show_async()
 
     async def on_tick(self, tick: TickEvent):
@@ -234,9 +263,11 @@ class LineCharts:
         """处理K线数据"""
         if is_end:
             for chart in self._pair_charts.values():
+                bar.datetime = bar.datetime.replace(hour=0, minute=0, second=0, microsecond=0)
                 chart.on_bar(bar)
 
     async def on_order(self, order: OrderEvent):
         """处理订单事件"""
         for chart in self._pair_charts.values():
+            order.order.datetime = order.order.datetime.replace(hour=0, minute=0, second=0, microsecond=0)
             chart.on_order(order.order)
