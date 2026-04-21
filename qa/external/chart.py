@@ -154,12 +154,16 @@ class PairLineChart(LineChart):
     def on_order(self, order: Order) -> None:
         """记录订单数据（用于渲染标记）"""
         marker = "B" if order.direction == OrderOperation.BUY else "S"
-        self.bs_markers.append((marker, order.datetime, order.price))
+        self.bs_markers.append((
+            marker,
+            order.datetime.replace(hour=0, minute=0, second=0, microsecond=0),
+            order.price,
+        ))
 
     def on_bar(self, bar: Bar) -> None:
         """处理K线数据"""
         # 存储K线数据
-        self._ohlc_data['date'].append(bar.datetime)
+        self._ohlc_data['date'].append(bar.datetime.replace(hour=0, minute=0, second=0, microsecond=0))
         self._ohlc_data['open'].append(float(bar.open))
         self._ohlc_data['high'].append(float(bar.high))
         self._ohlc_data['low'].append(float(bar.low))
@@ -263,11 +267,9 @@ class LineCharts:
         """处理K线数据"""
         if is_end:
             for chart in self._pair_charts.values():
-                bar.datetime = bar.datetime.replace(hour=0, minute=0, second=0, microsecond=0)
                 chart.on_bar(bar)
 
     async def on_order(self, order: OrderEvent):
         """处理订单事件"""
         for chart in self._pair_charts.values():
-            order.order.datetime = order.order.datetime.replace(hour=0, minute=0, second=0, microsecond=0)
             chart.on_order(order.order)
