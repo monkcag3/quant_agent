@@ -2,7 +2,6 @@
 import copy
 from collections import defaultdict
 import asyncio
-import logging
 from typing import Any, Optional
 from decimal import Decimal
 import dataclasses
@@ -12,10 +11,9 @@ import qa
 from qa.core.meta import Order, Trade, Tick, TickEvent, OrderEvent, TradeEvent
 from qa.core.const import OrderOperation
 from .td_api import TdApi
+from qa.core.async_logger import logger
 from qa.external.common.metric import WinRateMetric, TotalReturnMetric, MaxDrawdownMetric, SharpeRatioMetric
 
-
-logger = logging.getLogger(__name__)
 
 
 class PortfolioMetrics:
@@ -74,10 +72,24 @@ class PortfolioMetrics:
 @dataclasses.dataclass
 class Position:
     pair: qa.Pair
-    volume: int = 0
-    price: Decimal = 0.0
-    frozon_volume: int = 0
-    frozon_day: int = 0
+    total_volume: Decimal = Decimal(0)  # 总持仓
+    frozen_volume: Decimal = Decimal(0) # 冻结持仓(今仓)
+    avg_price: Decimal = Decimal(0)
+    open_time: datetime = dataclasses.field(default_factory=lambda: datetime.now(timezone.utc))
+
+    @property
+    def can_sell(
+        self,
+    ) -> None:
+        """是否可卖出：仅判断可卖仓位"""
+        return self.total_volume - self.frozen_volume > 0
+
+
+@dataclasses.dataclass
+class AccountState:
+    available: Decimal = Decimal(0)
+    withdraw_quota: Decimal = Decimal(0)
+    frozen_cash: Decimal = Decimal(0)
 
 
 class QAccount:
@@ -88,35 +100,45 @@ class QAccount:
         td_api: TdApi,
         init_capital=20000.0
     ):
-        self._available: Decimal = Decimal(init_capital)
-        self._withdraw_quota: Decimal = self._available
-        self._frozen_cash: Decimal = 0
+        self.account_state = AccountState(
+            available=Decimal(init_capital),
+            withdraw_quota=Decimal(init_capital),
+            frozen_cash=Decimal(0),
+        )
+
         self._portfolio_metrics = PortfolioMetrics(self)
 
-        self._quotes = defaultdict(list)
-        self._positions = defaultdict(list)
+        self._quotes: dict[qa.Pair, Tick] = dict()
+        self._positions: dict[qa.Pair, Position] = dict()
+        self._last_trading_date: datetime|None = None
 
         self._td_api = td_api
-        
-        self._pos = (datetime.now(timezone.utc), 0) # 时间 & 仓位（手数）
 
     @property
     def available(self):
-        return self._available
+        return self.account_state.available
     
     @property
     def withdraw_quota(self):
-        return self._withdraw_quota
+        return self.account_state.withdraw_quota
     
     @property
     def frozen_cash(self):
-        return self._frozen_cash
+        return self.account_state.frozen_cash
+
+    def get_position(
+        self,
+        pair: qa.Pair,
+    ) -> Position:
+        return self._positions.get(pair, Position(pair))
+
     def on_init(self):
-        pass
+        """实盘需调用，进行账户信息同步"""
+        logger.info("✅ 账户初始化完成")
 
     def on_rtn_account(self, acc):
-        self._available = acc.available
-        self._withdraw_quota = acc.withdraw_quota
+        self.account_state.available = acc.available
+        self.account_state.withdraw_quota = acc.withdraw_quota
 
     def on_rtn_position(self, pos):
         print('get position')
@@ -124,44 +146,69 @@ class QAccount:
     def on_req_order(self, order: Order):
         amount = order.price * order.volume
         if order.direction == OrderOperation.BUY:
-            self._available -= amount
-            self._frozen_cash += amount
+            if self.available < amount:
+                logger.warning(f"❌ 资金不足 需要:{amount} 可用:{self.available}")
+                return
+            self.account_state.available -= amount
+            self.account_state.frozen_cash += amount
         elif order.direction == OrderOperation.SELL:
-            # self._frozen_cash -= amount
-            pass
+            pos = self.get_position(qa.Pair(order.symbol, order.exchange))
+            delta = pos.total_volume - pos.frozen_volume
+            if order.volume > delta:
+                logger.warning(f"❌ 超出可卖仓位 可卖:{delta} 委托:{order.volume}")
     
     async def on_rtn_order(self, order: OrderEvent):
-        # amount = order.price * order.volume
-        # if order.direction == b'buy':
-        #     self._available -= amount
-        #     self._frozen_cash += amount
-        # elif order.direction == b'sell':
-        #     # self._frozen_cash -= amount
-        #     pass
-        # print('---', self.available, self.frozen_cash)
         pass
     
     async def on_rtn_trade(
         self,
         event: TradeEvent
     ):
-        amount = event.trade.price * event.trade.volume
-        if event.trade.direction == OrderOperation.BUY:
-            # self._pos += event.trade.volume
-            self._pos = (event.trade.datetime, event.trade.volume)
-            self._frozen_cash -= Decimal(amount)
-        elif event.trade.direction == OrderOperation.SELL:
-            # self._pos -= event.trade.volume
-            self._pos = (event.trade.datetime, 0)
-            self._available += Decimal(amount)
+        trade = event.trade
+        amount = trade.price * trade.volume
+        pair = qa.Pair(trade.symbol, trade.exchange)
+
+        pos = self.get_position(pair)
+        if trade.direction == OrderOperation.BUY:
+            self.account_state.frozen_cash -= Decimal(amount)
+            total_amount = pos.avg_price * pos.total_volume + amount
+            avg_price = total_amount / (pos.total_volume + trade.volume)
+
+            self._positions[pair] = Position(
+                pair,
+                total_volume=pos.total_volume + trade.volume,
+                frozen_volume=pos.frozen_volume + trade.volume,
+                avg_price=avg_price,
+                open_time=trade.datetime,
+            )
+        elif trade.direction == OrderOperation.SELL:
+            self.account_state.available += Decimal(amount)
+
+            self._positions[pair] = Position(
+                pair,
+                total_volume=pos.total_volume - trade.volume,
+                frozen_volume=pos.frozen_volume,
+                avg_price=pos.avg_price,
+                open_time=pos.open_time,
+            )
+
         await self._portfolio_metrics.on_trade(event.trade)
-        pass
+
 
     def on_tick(
         self,
         event: TickEvent,
     ):
         self._quotes[event.tick.pair] = event.tick
+
+        # 主动触发每日结算
+        current_date = event.tick.datetime.date()
+        if self._last_trading_date is None:
+            self._last_trading_date = current_date
+        if current_date != self._last_trading_date:
+            self.on_day_settlement(event.tick.datetime)
+            self._last_trading_date = current_date
+
 
     async def on_trading_singal(
         self,
@@ -191,9 +238,9 @@ class QAccount:
             # 计算当前可购买手数
             volume = Decimal(self.available) / quote.close
             volume = (volume // 100) * 100
-            if volume == 0 or self._pos[1] > 0:
+            if volume == 0:
                 return
-            self._available -= Decimal(volume) * Decimal(quote.close)
+            self.account_state.available -= Decimal(volume) * Decimal(quote.close)
 
             # 买
             await self._td_api.create_limit_order(
@@ -204,16 +251,32 @@ class QAccount:
                 volume=volume
             )
         elif target_position == qa.Direction.SHORT:
-            # 获取当前持仓
-            # 卖
-            # T1
-            tm_delta = quote.datetime - self._pos[0]
-            if self._pos[1] > 0 and tm_delta > timedelta(hours=12):
-                await self._td_api.create_limit_order(
-                    pair,
-                    qa.OrderOperation.SELL,
-                    datetime=quote.datetime,
-                    price=quote.close,
-                    volume=self._pos[1]
+            pos = self.get_position(pair)
+            if not pos.can_sell:
+                logger.debug(f"❌ 不可卖出 {pair}：无可卖昨仓，今仓受T+1限制")
+                return
+            
+            await self._td_api.create_limit_order(
+                pair,
+                qa.OrderOperation.SELL,
+                datetime=quote.datetime,
+                price=quote.close,
+                volume=pos.total_volume - pos.frozen_volume,
+            )
+
+
+    def on_day_settlement(
+        self,
+        trading_day: datetime,
+    ):
+        """每日结算
+        1. 今仓转昨苍
+        """
+        logger.info(f"📅 交易日结算: {trading_day.date()} 持仓结转...")
+        for pair, pos in self._positions.items():
+            if pos.frozen_volume > 0:
+                self._positions[pair] = dataclasses.replace(
+                    pos,
+                    frozen_volume=Decimal(0),
                 )
-            pass
+        logger.info("✅ 持仓结转完成：所有今仓变为可卖昨仓")
