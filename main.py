@@ -3,7 +3,8 @@ import asyncio
 from dotenv import load_dotenv
 
 import qa
-from qa.gallary import rsi, bbands, dmac
+from qa.gallary import rsi, bbands, dmac, macd
+from qa.experimental import slope_window
 from qa.external.cn.account import QAccount
 from qa.external.cn.sim import SimMd, SimTd
 from qa.external.chart import LineCharts
@@ -16,10 +17,17 @@ load_dotenv()
 async def main():
     zone = qa.QAZone()
     pair = qa.Pair('600000', 'SSE')
+    # pair = qa.Pair('600004', 'SSE')
+    # pair = qa.Pair('600008', 'SSE')
+    pair = qa.Pair('000751', 'SZSE')
     
     strategy = rsi.Strategy(zone, '1d', 7, 30, 70)
+    # strategy = rsi.Strategy(zone, '1d', 5, 40, 60)
+    # strategy = rsi.Strategy(zone, '1d', 7, 35, 65)
     # strategy = bbands.Strategy(zone, 30, 2)
     # strategy = dmac.Strategy(zone, 7, 30)
+    # strategy = macd.Strategy(zone, '1d', 12, 26, 9)
+    strategy = slope_window.Strategy(zone, '1d', 5)
 
     # 行情
     md = SimMd(zone)

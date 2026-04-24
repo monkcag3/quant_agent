@@ -11,3 +11,5 @@ wheels/
 *.duckdb
 *.duckdb.wal
 .env
+logs/
+experimental
