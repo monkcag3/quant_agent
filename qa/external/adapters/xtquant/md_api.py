@@ -1,12 +1,11 @@
 
 import logging
 import asyncio
-from typing import Dict, List, Any
+from typing import Any
 
 import qa
-
-
-logger = logging.getLogger(__name__)
+from qa.core.adapter import MdSpi
+from qa.core.async_logger import logger
 
 
 def get_tick_channel(
@@ -15,7 +14,7 @@ def get_tick_channel(
     return f"{str(pair)}@tick"
 
 
-class MdFactory(qa.Producer, qa.FifoQueueEventSource):
+class MdApi(MdSpi, qa.Producer, qa.FifoQueueEventSource):
     def __init__(
         self,
         zone: qa.Zone,
@@ -24,9 +23,9 @@ class MdFactory(qa.Producer, qa.FifoQueueEventSource):
         super().__init__(self)
         self._zone = zone
         self._interval = interval
-        self._event_sources: Dict[str, qa.EventSource] = {}
-        
-        self._quotes: Dict[str, List[qa.TickEventHandler]] = {}
+        self._event_sources: dict[str, qa.EventSource] = {}
+
+        self._quotes: dict[str, list[qa.TickEventHandler]] = {}
 
         self._zone.subscribe(self, self.__handle_md__)
 

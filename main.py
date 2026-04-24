@@ -3,10 +3,10 @@ import asyncio
 from dotenv import load_dotenv
 
 import qa
-from qa.gallary import rsi, bbands, dmac, macd
+from qa.gallary import rsi, bbands, dmac
 from qa.experimental import slope_window
-from qa.external.cn.account import QAccount
-from qa.external.cn.sim import SimMd, SimTd
+from qa.core.account import QAccount
+from qa.external.adapters import SimMdApi, SimTdApi
 from qa.external.chart import LineCharts
 
 asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
@@ -20,7 +20,7 @@ async def main():
     # pair = qa.Pair('600004', 'SSE')
     # pair = qa.Pair('600008', 'SSE')
     pair = qa.Pair('000751', 'SZSE')
-    
+
     strategy = rsi.Strategy(zone, '1d', 7, 30, 70)
     # strategy = rsi.Strategy(zone, '1d', 5, 40, 60)
     # strategy = rsi.Strategy(zone, '1d', 7, 35, 65)
@@ -30,11 +30,11 @@ async def main():
     strategy = slope_window.Strategy(zone, '1d', 5)
 
     # 行情
-    md = SimMd(zone)
+    md = SimMdApi(zone)
     md.subscribe(pair, strategy.on_tick_event, '20250408', '20260418')
 
     # 交易
-    td = SimTd(zone)
+    td = SimTdApi(zone)
     account = QAccount(td_api=td)
     md.subscribe(pair, account.on_tick)
     strategy.subscribe_to_trading_signals(account.on_trading_singal)
@@ -46,7 +46,7 @@ async def main():
     chart.add_pair(pair)
     md.subscribe(pair, chart.on_tick)
     td.subscribe_to_order(pair, chart.on_order)
-    
+
 
     await zone.run()
 

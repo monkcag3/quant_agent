@@ -1,19 +1,19 @@
 
 
 import abc
-from typing import Dict, Any
+from typing import Any
 
 import qa
 
 
-class TdApi:
+class TdSpi:
 
     @abc.abstractmethod
     async def create_market_order(
         self,
         pair: qa.Pair,
         operation: qa.OrderOperation,
-        **kwargs: Dict[str, Any],
+        **kwargs: dict[str, Any],
     ):
         raise NotImplementedError()
 
@@ -37,19 +37,19 @@ class TdApi:
         pair: qa.Pair,
     ):
         raise NotImplementedError()
-    
+
     @abc.abstractmethod
     async def get_account(
         self,
     ):
         raise NotImplementedError()
-    
+
     @abc.abstractmethod
     async def get_positions(
         self,
     ):
         raise NotImplementedError()
-    
+
     @abc.abstractmethod
     async def get_position(
         self,

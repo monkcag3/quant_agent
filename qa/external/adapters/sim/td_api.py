@@ -1,8 +1,8 @@
 
-from typing import Dict, List, Any
+from typing import Any
 
 import qa
-from ..td_api import TdApi
+from qa.core.adapter import TdSpi
 
 
 def get_order_channel(
@@ -21,8 +21,8 @@ class TdSource(qa.FifoQueueEventSource):
         self,
     ):
         super().__init__()
-        self._order_event_handlers: Dict[str, List[qa.EventHandler]] = {}
-        self._trade_event_handlers: Dict[str, List[qa.EventHandler]] = {}
+        self._order_event_handlers: dict[str, list[qa.EventHandler]] = {}
+        self._trade_event_handlers: dict[str, list[qa.EventHandler]] = {}
 
 
     def subscribe_order(
@@ -72,7 +72,7 @@ class TdSource(qa.FifoQueueEventSource):
             await trade_handler(qa.TradeEvent(trade))
 
 
-class TdFactory(TdApi):
+class TdApi(TdSpi):
     def __init__(
         self,
         zone: qa.Zone,
@@ -88,7 +88,7 @@ class TdFactory(TdApi):
         event_handler: qa.OrderEventHandler,
     ):
         self._order_event_source.subscribe_order(pair, event_handler)
-        
+
 
     def subscribe_to_trade(
         self,
@@ -101,7 +101,7 @@ class TdFactory(TdApi):
         self,
         pair: qa.Pair,
         operation: qa.OrderOperation,
-        **kwargs: Dict[str, Any],
+        **kwargs: dict[str, Any],
     ):
         order = qa.Order()
         order.symbol = pair.symbol
@@ -115,7 +115,7 @@ class TdFactory(TdApi):
         self,
         pair: qa.Pair,
         operation: qa.OrderOperation,
-        **kwargs: Dict[str, Any],
+        **kwargs: dict[str, Any],
     ):
         order = qa.Order()
         order.symbol = pair.symbol

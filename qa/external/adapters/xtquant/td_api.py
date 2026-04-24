@@ -1,11 +1,11 @@
 
-from typing import Dict, List, Any
+from typing import Any
 
 import qa
-from ..td_api import TdApi
+from qa.core.adapter import TdSpi
 
 
-class TdFactory(TdApi):
+class TdApi(TdSpi):
     def __init__(
         self,
         zone: qa.Zone,
@@ -30,7 +30,7 @@ class TdFactory(TdApi):
         self,
         pair: qa.Pair,
         operation: qa.OrderOperation,
-        **kwargs: Dict[str, Any],
+        **kwargs: dict[str, Any],
     ):
         pass
 
@@ -38,7 +38,7 @@ class TdFactory(TdApi):
         self,
         pair: qa.Pair,
         operation: qa.OrderOperation,
-        **kwargs: Dict[str, Any],
+        **kwargs: dict[str, Any],
     ):
         pass
 

@@ -1,5 +1,4 @@
 
-from calendar import c
 import os
 from pathlib import Path
 
@@ -38,7 +37,7 @@ def get_symbol_db(
 
 
 
-class MdFactory:
+class MdApi:
     def __init__(
         self,
         zone: qa.Zone,

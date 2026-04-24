@@ -10,7 +10,7 @@ from datetime import datetime, timedelta, timezone
 import qa
 from qa.core.meta import Order, Trade, Tick, TickEvent, OrderEvent, TradeEvent
 from qa.core.const import OrderOperation
-from .td_api import TdApi
+from qa.core.adapter import TdSpi
 from qa.core.async_logger import logger
 from qa.external.common.metric import WinRateMetric, TotalReturnMetric, MaxDrawdownMetric, SharpeRatioMetric
 
@@ -55,7 +55,7 @@ class PortfolioMetrics:
                 await self._sharpe_ratio_metric.calculate(self._buy_slot, trade)
             except Exception as e:
                 print(e)
-                
+
             profit = '单笔盈利' if delta > 0 else '单笔亏损'
             print(f'{profit}[{delta}] 账户金额[{available}] {self._win_rate_metric} {self._total_return_metric} {self._max_drawdown_metric} {self._sharpe_ratio_metric}')
             print('-'*50)
@@ -97,7 +97,7 @@ class QAccount:
 
     def __init__(
         self,
-        td_api: TdApi,
+        td_api: TdSpi,
         init_capital=20000.0
     ):
         self.account_state = AccountState(
@@ -117,11 +117,11 @@ class QAccount:
     @property
     def available(self):
         return self.account_state.available
-    
+
     @property
     def withdraw_quota(self):
         return self.account_state.withdraw_quota
-    
+
     @property
     def frozen_cash(self):
         return self.account_state.frozen_cash
@@ -156,10 +156,10 @@ class QAccount:
             delta = pos.total_volume - pos.frozen_volume
             if order.volume > delta:
                 logger.warning(f"❌ 超出可卖仓位 可卖:{delta} 委托:{order.volume}")
-    
+
     async def on_rtn_order(self, order: OrderEvent):
         pass
-    
+
     async def on_rtn_trade(
         self,
         event: TradeEvent
@@ -255,7 +255,7 @@ class QAccount:
             if not pos.can_sell:
                 logger.debug(f"❌ 不可卖出 {pair}：无可卖昨仓，今仓受T+1限制")
                 return
-            
+
             await self._td_api.create_limit_order(
                 pair,
                 qa.OrderOperation.SELL,
